@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="846" viewBox="0 0 1320 846" role="img" aria-labelledby="title desc">
+<title id="title">Vouch workflow: pay on Sepolia, prove through Attestcoin, claim on Creditcoin</title>
+<desc id="desc">Choose an item from a merchant menu and pay in MockUSDC on Ethereum Sepolia. Attestcoin attests the source block and a prover returns the transaction bytes and Merkle proof, which the app polls for. The wallet then submits recordPurchase on Creditcoin CC3. Settlement is atomic: the native verifier at 0x0FD2 checks the proof, the vendored decoder reads the receipt status and locates the Transfer log to a registered merchant, a receipt is written and keyed to chain key, height and transaction index, a non-transferable Benefit Pass is minted, stars and level are applied, and quest progress, community campaign targets and CTC reward credits accrue. Every check passes or the whole claim reverts.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9a9186"/></marker></defs>
+<g font-family="DejaVu Sans, Arial, sans-serif">
+<rect width="1320" height="846" rx="20" fill="#ffffff"/>
+
+<text x="32" y="42" font-size="17" fill="#AD462C" font-weight="700">VOUCH</text>
+<text x="32" y="78" font-size="30" fill="#252A24" font-weight="700">From a Sepolia payment to Creditcoin rewards</text>
+<text x="32" y="110" font-size="17" fill="#6B7280" font-weight="400">Pay in MockUSDC on one chain. Prove it. Earn loyalty on another. No bridge.</text>
+
+<path d="M 230 176 V 148 H 1090 V 176" fill="none" stroke="#9a9186" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="429" y="132" width="462" height="28" rx="0" fill="#ffffff" stroke="#ffffff"/>
+<text x="444" y="152" font-size="16" fill="#6B7280" font-weight="500">Claim waits on attestation, historically 7 to 9 minutes</text>
+
+<rect x="32" y="176" width="396" height="174" rx="14" fill="#FAFAF8" stroke="#E2DCD3"/>
+<text x="52" y="207" font-size="14" fill="#AD462C" font-weight="700">01</text>
+<text x="89" y="208" font-size="21" fill="#252A24" font-weight="700">Pay the merchant</text>
+<text x="52" y="241" font-size="17" fill="#526176" font-weight="400">Choose an item from a merchant menu</text>
+<text x="52" y="272" font-size="17" fill="#526176" font-weight="400">Send MockUSDC to the merchant address</text>
+<text x="52" y="302" font-size="17" fill="#526176" font-weight="400">Payment settles on Ethereum Sepolia</text>
+<text x="52" y="329" font-size="14" fill="#8A8578" font-weight="400">Sepolia · chain ID 11155111</text>
+
+<rect x="462" y="176" width="396" height="174" rx="14" fill="#FAFAF8" stroke="#E2DCD3"/>
+<text x="482" y="207" font-size="14" fill="#AD462C" font-weight="700">02</text>
+<text x="519" y="208" font-size="21" fill="#252A24" font-weight="700">Prove the payment</text>
+<text x="482" y="241" font-size="17" fill="#526176" font-weight="400">Attestcoin attests the source block</text>
+<text x="482" y="272" font-size="17" fill="#526176" font-weight="400">Prover returns tx bytes + Merkle proof</text>
+<text x="482" y="302" font-size="17" fill="#526176" font-weight="400">POST /api/proof polls until ready</text>
+<text x="482" y="329" font-size="14" fill="#8A8578" font-weight="400">Stateless route · pending, ready, error</text>
+
+<rect x="892" y="176" width="396" height="174" rx="14" fill="#FAFAF8" stroke="#E2DCD3"/>
+<text x="912" y="207" font-size="14" fill="#AD462C" font-weight="700">03</text>
+<text x="949" y="208" font-size="21" fill="#252A24" font-weight="700">Claim on Creditcoin</text>
+<text x="912" y="241" font-size="17" fill="#526176" font-weight="400">Wallet submits recordPurchase</text>
+<text x="912" y="272" font-size="17" fill="#526176" font-weight="400">Native verifier checks the proof</text>
+<text x="912" y="302" font-size="17" fill="#526176" font-weight="400">Rewards apply in the same transaction</text>
+<text x="912" y="329" font-size="14" fill="#8A8578" font-weight="400">Creditcoin CC3 · chain ID 102031</text>
+
+<path d="M 428 264 H 461" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 858 264 H 891" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 1090 350 V 395" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+
+<text x="32" y="382" font-size="16" fill="#6B7280" font-weight="400">Proof data is fetched offchain. Nothing is credited until the Creditcoin transaction executes.</text>
+
+<rect x="32" y="398" width="1256" height="402" rx="18" fill="#FDF7F4" stroke="#EBD3C7"/>
+<text x="52" y="430" font-size="17" fill="#8A3A24" font-weight="700">ATOMIC CLAIM ON CREDITCOIN CC3</text>
+<text x="812" y="430" font-size="17" fill="#8A3A24" font-weight="500">Every check passes or the whole claim reverts</text>
+<text x="52" y="459" font-size="17" fill="#526176" font-weight="400">Checks: proof verifies · receipt status 1 · payment token · payer is the caller · not already claimed*</text>
+
+<text x="52" y="510" font-size="16" fill="#384960" font-weight="700">VERIFY</text>
+<text x="52" y="537" font-size="14" fill="#8A8578" font-weight="400">proof → facts</text>
+<rect x="236" y="482" width="318" height="76" rx="10" fill="#EDF4F8" stroke="#C2D8E4"/>
+<text x="252" y="511" font-size="17" fill="#252A24" font-weight="600">Native verifier 0x0FD2</text>
+<text x="252" y="537" font-size="14" fill="#526176" font-weight="400">Merkle and continuity proof checked</text>
+<rect x="590" y="482" width="318" height="76" rx="10" fill="#EDF4F8" stroke="#C2D8E4"/>
+<text x="606" y="511" font-size="17" fill="#252A24" font-weight="600">Decode tx and receipt</text>
+<text x="606" y="537" font-size="14" fill="#526176" font-weight="400">Vendored EvmV1Decoder reads status</text>
+<rect x="944" y="482" width="318" height="76" rx="10" fill="#EDF4F8" stroke="#C2D8E4"/>
+<text x="960" y="511" font-size="17" fill="#252A24" font-weight="600">Locate the Transfer log</text>
+<text x="960" y="537" font-size="14" fill="#526176" font-weight="400">Payer to a registered active merchant</text>
+<path d="M 554 520 H 589" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 908 520 H 943" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+
+<text x="52" y="606" font-size="16" fill="#384960" font-weight="700">RECORD</text>
+<text x="52" y="633" font-size="14" fill="#8A8578" font-weight="400">payment → progress</text>
+<rect x="236" y="578" width="318" height="76" rx="10" fill="#FDF1EC" stroke="#E5C3B4"/>
+<text x="252" y="607" font-size="17" fill="#252A24" font-weight="600">Receipt written onchain</text>
+<text x="252" y="633" font-size="14" fill="#526176" font-weight="400">Keyed to chainKey, height, txIndex</text>
+<rect x="590" y="578" width="318" height="76" rx="10" fill="#FDF1EC" stroke="#E5C3B4"/>
+<text x="606" y="607" font-size="17" fill="#252A24" font-weight="600">Benefit Pass minted</text>
+<text x="606" y="633" font-size="14" fill="#526176" font-weight="400">Non-transferable, art made onchain</text>
+<rect x="944" y="578" width="318" height="76" rx="10" fill="#FDF1EC" stroke="#E5C3B4"/>
+<text x="960" y="607" font-size="17" fill="#252A24" font-weight="600">Stars and level applied</text>
+<text x="960" y="633" font-size="14" fill="#526176" font-weight="400">10 stars per whole demo dollar</text>
+<path d="M 554 616 H 589" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 908 616 H 943" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+
+<text x="52" y="702" font-size="16" fill="#384960" font-weight="700">REWARD</text>
+<text x="52" y="729" font-size="14" fill="#8A8578" font-weight="400">progress → CTC</text>
+<rect x="236" y="674" width="318" height="76" rx="10" fill="#EDF6F0" stroke="#BEDCC9"/>
+<text x="252" y="703" font-size="17" fill="#252A24" font-weight="600">Quest progress advances</text>
+<text x="252" y="729" font-size="14" fill="#526176" font-weight="400">Item requirements and level gates</text>
+<rect x="590" y="674" width="318" height="76" rx="10" fill="#EDF6F0" stroke="#BEDCC9"/>
+<text x="606" y="703" font-size="17" fill="#252A24" font-weight="600">Campaign target moves</text>
+<text x="606" y="729" font-size="14" fill="#526176" font-weight="400">Shared community milestone</text>
+<rect x="944" y="674" width="318" height="76" rx="10" fill="#EDF6F0" stroke="#BEDCC9"/>
+<text x="960" y="703" font-size="17" fill="#252A24" font-weight="600">CTC credits accrue</text>
+<text x="960" y="729" font-size="14" fill="#526176" font-weight="400">Merchant vault and app cashback</text>
+<path d="M 554 712 H 589" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 908 712 H 943" fill="none" stroke="#9a9186" stroke-width="2" marker-end="url(#arrow)"/>
+
+<text x="52" y="780" font-size="14" fill="#8A8578" font-weight="400">* Replay protection keys on (chainKey, height, txIndex) computed by the verifier, never a caller-supplied hash.</text>
+<text x="32" y="829" font-size="14" fill="#8A8578" font-weight="400">MockUSDC is an openly mintable testnet token. App cashback also requires a fresh oracle rate and available treasury funds.</text>
+</g></svg>

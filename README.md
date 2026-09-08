@@ -31,34 +31,7 @@ This repository is a **testnet hackathon prototype**. Its payment token is an op
 
 **Attestcoin supplies the evidence that connects a Sepolia payment to Creditcoin rewards.** The Next.js server fetches proof data; `VouchCore` checks it through Creditcoin's native verifier before applying purchase rewards.
 
-```mermaid
-flowchart TB
-    subgraph src["Ethereum Sepolia"]
-        direction LR
-        PAY("Wallet pays MockUSDC<br/>to merchant")
-    end
-
-    subgraph att["Attestcoin"]
-        direction LR
-        BLK("Source block<br/>attested") --> PRV("Proof service<br/>supplies bytes") -.-> API("POST /api/proof<br/>polls until ready")
-    end
-
-    subgraph cc["Creditcoin CC3"]
-        direction LR
-        REC("Wallet submits<br/>recordPurchase") --> VER("Native verifier 0x0FD2<br/>verify + decode receipt")
-        VER --> RWD("Receipt + pass + stars")
-        VER --> QST("Quests + CTC<br/>reward credits")
-    end
-
-    src --> att --> cc
-
-    classDef node fill:#FDF1EC,stroke:#AD462C,stroke-width:1.5px,color:#252A24
-    class PAY,BLK,PRV,API,REC,VER,RWD,QST node
-    style src fill:#FAFAF8,stroke:#D9D5CE,color:#252A24
-    style att fill:#FAFAF8,stroke:#D9D5CE,color:#252A24
-    style cc fill:#FAFAF8,stroke:#D9D5CE,color:#252A24
-    linkStyle default stroke:#8A8F98,stroke-width:1.5px
-```
+[![Vouch workflow: pay a merchant in MockUSDC on Ethereum Sepolia, prove the payment through Attestcoin, then claim a receipt, Benefit Pass progress, and CTC rewards atomically on Creditcoin CC3.](docs/images/workflow.svg)](docs/images/workflow.svg)
 
 | Integration point | Implementation |
 | --- | --- |
