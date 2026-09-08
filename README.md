@@ -54,9 +54,10 @@ flowchart TB
 
     classDef node fill:#FDF1EC,stroke:#AD462C,stroke-width:1.5px,color:#252A24
     class PAY,BLK,PRV,API,REC,VER,RWD,QST node
-    style src fill:#FAFAF8,stroke:#D9D5CE
-    style att fill:#FAFAF8,stroke:#D9D5CE
-    style cc fill:#FAFAF8,stroke:#D9D5CE
+    style src fill:#FAFAF8,stroke:#D9D5CE,color:#252A24
+    style att fill:#FAFAF8,stroke:#D9D5CE,color:#252A24
+    style cc fill:#FAFAF8,stroke:#D9D5CE,color:#252A24
+    linkStyle default stroke:#8A8F98,stroke-width:1.5px
 ```
 
 | Integration point | Implementation |
