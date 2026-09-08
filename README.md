@@ -32,39 +32,31 @@ This repository is a **testnet hackathon prototype**. Its payment token is an op
 **Attestcoin supplies the evidence that connects a Sepolia payment to Creditcoin rewards.** The Next.js server fetches proof data; `VouchCore` checks it through Creditcoin's native verifier before applying purchase rewards.
 
 ```mermaid
-flowchart LR
-    subgraph sepolia["Ethereum Sepolia"]
-        PAY["Wallet pays MockUSDC<br/>to merchant"]
+flowchart TB
+    subgraph src["Ethereum Sepolia"]
+        direction LR
+        PAY("Wallet pays MockUSDC<br/>to merchant")
     end
 
-    subgraph attestcoin["Attestcoin"]
-        BLK["Source block<br/>attested"]
-        PRV["Proof service<br/>supplies bytes"]
+    subgraph att["Attestcoin"]
+        direction LR
+        BLK("Source block<br/>attested") --> PRV("Proof service<br/>supplies bytes") -.-> API("POST /api/proof<br/>polls until ready")
     end
 
-    subgraph vouch["Vouch app"]
-        API["POST /api/proof<br/>polls until ready"]
+    subgraph cc["Creditcoin CC3"]
+        direction LR
+        REC("Wallet submits<br/>recordPurchase") --> VER("Native verifier 0x0FD2<br/>verify + decode receipt")
+        VER --> RWD("Receipt + pass + stars")
+        VER --> QST("Quests + CTC<br/>reward credits")
     end
 
-    subgraph creditcoin["Creditcoin CC3"]
-        REC["Wallet submits<br/>recordPurchase"]
-        VER["Native verifier 0x0FD2<br/>decodes the receipt"]
-        RWD["Receipt + pass + stars"]
-        QST["Quests + CTC<br/>reward credits"]
-    end
+    src --> att --> cc
 
-    PAY --> BLK --> PRV
-    PRV -. proof bytes .-> API
-    API --> REC --> VER
-    VER --> RWD
-    VER --> QST
-
-    classDef src fill:#FDF1EC,stroke:#AD462C,stroke-width:1px,color:#252A24
-    classDef mid fill:#F2F3F0,stroke:#6B7280,stroke-width:1px,color:#252A24
-    classDef dst fill:#ECF2ED,stroke:#3F6B4A,stroke-width:1px,color:#252A24
-    class PAY src
-    class BLK,PRV,API mid
-    class REC,VER,RWD,QST dst
+    classDef node fill:#FDF1EC,stroke:#AD462C,stroke-width:1.5px,color:#252A24
+    class PAY,BLK,PRV,API,REC,VER,RWD,QST node
+    style src fill:#FAFAF8,stroke:#D9D5CE
+    style att fill:#FAFAF8,stroke:#D9D5CE
+    style cc fill:#FAFAF8,stroke:#D9D5CE
 ```
 
 | Integration point | Implementation |
