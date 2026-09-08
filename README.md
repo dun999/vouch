@@ -32,15 +32,23 @@ This repository is a **testnet hackathon prototype**. Its payment token is an op
 **Attestcoin supplies the evidence that connects a Sepolia payment to Creditcoin rewards.** The Next.js server fetches proof data; `VouchCore` checks it through Creditcoin's native verifier before applying purchase rewards.
 
 ```mermaid
-flowchart LR
-    A(Customer pays MockUSDC<br/>to merchant on Sepolia) --> B(Attestcoin attests block<br/>prover serves proof bytes)
-    B --> C(Wallet submits recordPurchase<br/>on Creditcoin CC3)
-    C --> D{Native verifier<br/>0x0FD2}
-    D -->|Invalid or replayed| E(Claim reverts)
-    D -->|Valid| F(Decode receipt<br/>and Transfer log)
-    F --> G[(Receipt written onchain)]
-    F --> H(Benefit Pass<br/>plus stars and level)
-    F --> I(Quests, campaigns<br/>and CTC credits)
+flowchart TB
+    subgraph r1[" "]
+        direction LR
+        A(Customer pays MockUSDC<br/>to merchant on Sepolia) --> B(Attestcoin attests<br/>the source block) --> C(Prover serves<br/>proof bytes)
+    end
+    subgraph r2[" "]
+        direction LR
+        D(Wallet submits recordPurchase<br/>on Creditcoin CC3) --> E{Native verifier<br/>0x0FD2} --> F(Decode receipt<br/>and Transfer log)
+    end
+    subgraph r3[" "]
+        direction LR
+        G[(Receipt written<br/>onchain)] --- H(Benefit Pass<br/>plus stars and level) --- I(Quests, campaigns<br/>and CTC credits)
+    end
+    r1 --> r2 --> r3
+    style r1 fill:none,stroke:none
+    style r2 fill:none,stroke:none
+    style r3 fill:none,stroke:none
 ```
 
 | Integration point | Implementation |
