@@ -32,25 +32,21 @@ This repository is a **testnet hackathon prototype**. Its payment token is an op
 **Attestcoin supplies the evidence that connects a Sepolia payment to Creditcoin rewards.** The Next.js server fetches proof data; `VouchCore` checks it through Creditcoin's native verifier before applying purchase rewards.
 
 ```mermaid
-flowchart TB
-    subgraph r1[" "]
-        direction LR
-        A(Customer pays MockUSDC<br/>to merchant on Sepolia) --> B(Attestcoin attests<br/>the source block) --> C(Prover serves<br/>proof bytes)
-    end
-    subgraph r2[" "]
-        direction LR
-        D(Wallet submits recordPurchase<br/>on Creditcoin CC3) --> E{Native verifier<br/>0x0FD2} --> F(Decode receipt<br/>and Transfer log)
-    end
-    subgraph r3[" "]
-        direction LR
-        G[(Receipt written<br/>onchain)] --- H(Benefit Pass<br/>plus stars and level) --- I(Quests, campaigns<br/>and CTC credits)
-    end
-    r1 --> r2 --> r3
-    style r1 fill:none,stroke:none
-    style r2 fill:none,stroke:none
-    style r3 fill:none,stroke:none
-```
+flowchart LR
+    A[Pay MockUSDC on Sepolia]
+    B[Attest source block]
+    C[Fetch proof bytes]
+    D[Call recordPurchase on CC3]
+    E{Proof valid?}
+    F[Decode receipt + Transfer log]
+    G[Write receipt on-chain]
+    H[Update Benefit Pass]
+    I[Unlock rewards]
 
+    A --> B --> C --> D --> E
+    E -->|Yes| F --> G --> H --> I
+    E -->|No| X[Revert]
+```
 | Integration point | Implementation |
 | --- | --- |
 | Source network | Ethereum Sepolia, EVM chain ID `11155111`; configured Attestcoin chain key `1` |
