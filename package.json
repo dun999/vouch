@@ -1,0 +1,17 @@
+{
+  "name": "vouch",
+  "private": true,
+  "packageManager": "pnpm@11.20.0",
+  "scripts": {
+    "dev": "pnpm --filter vouch-app dev",
+    "build": "pnpm --filter vouch-app build",
+    "test": "cd contracts && forge test",
+    "abis": "node scripts/extract-abis.mjs",
+    "claim": "node scripts/claim.mjs",
+    "seed": "cd contracts && forge script script/Seed.s.sol --rpc-url creditcoin --broadcast",
+    "deploy": "cd contracts && forge script script/Deploy.s.sol --rpc-url creditcoin --broadcast"
+  },
+  "devDependencies": {
+    "ethers": "^6.15.0"
+  }
+}
