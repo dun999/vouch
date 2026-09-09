@@ -12,9 +12,14 @@ Payments stay on Sepolia. Rewards and loyalty state live on Creditcoin. No asset
 
 ## Why Vouch?
 
-Loyalty programs usually keep a customer's history inside one merchant's database. Vouch explores a shared alternative: use verifiable payments as the input to a common progression system, while letting each merchant fund its own incentives.
+Loyalty programs usually keep a customer's history inside one merchant's database. Customers start from zero every time they shop somewhere new, while merchants run separate systems to retain the same customers.
 
-A coffee shop can offer “buy two Flat Whites,” a bookstore can reward a first purchase, and a ramen shop can unlock cashback when a community sales target is reached. Customers carry one pass across those storefronts.
+At the same time, merchants spend significant marketing budgets trying to generate attention, clicks, and repeat purchases. Vouch explores a more direct model: redirect part of that spend toward customers who actually transact.
+
+With Vouch, purchases are verified through Attestcoin before they contribute to a shared loyalty profile. Verified customers build stars and levels, while merchants can fund CTC rewards through quests and campaigns based on real purchase activity.
+
+A coffee shop can reward repeat Flat White purchases, a bookstore can reward a first purchase, and a ramen shop can run a funded community campaign. Customers carry one loyalty pass across all of them.
+
 
 This repository is a **testnet hackathon prototype**. Its payment token is an openly mintable MockUSDC, not redeemable USDC; dollar amounts are demo denominations.
 
