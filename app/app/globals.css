@@ -391,3 +391,147 @@ tbody tr:hover { background: var(--panel-2); }
 .landing-brand > .brand-logo { width: 176px; }
 .sidebar.collapsed .sb-head { justify-content: flex-start; padding-left: 10px; }
 .sidebar.collapsed .sb-collapse { right: 4px; }
+
+/* ---------------------------------------------------------------- receipt detail */
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.rc-summary {
+  display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  padding: 16px 18px; margin-bottom: 24px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+}
+
+/* The three chains, as three numbered steps down a single spine. */
+.rc-step { display: flex; gap: 14px; padding-bottom: 26px; position: relative; }
+.rc-step::before {
+  content: ""; position: absolute; left: 13px; top: 30px; bottom: 6px;
+  width: 1px; background: var(--line-2);
+}
+.rc-step.last { padding-bottom: 0; }
+.rc-step.last::before { display: none; }
+.rc-step-n {
+  width: 27px; height: 27px; flex: 0 0 27px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 650; background: var(--panel-2); color: var(--dim);
+  border: 1px solid var(--line-2); position: relative; z-index: 1;
+}
+.rc-step-n.done { background: var(--green); border-color: var(--green); color: var(--panel); }
+.rc-step-body { min-width: 0; flex: 1; padding-top: 2px; }
+.rc-step-h {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 15.5px; font-weight: 620; letter-spacing: -.01em;
+}
+.rc-step-sub { font-size: 13.5px; color: var(--muted); margin: 6px 0 14px; max-width: 62ch; }
+
+.rc-fields { display: grid; gap: 12px; }
+.rc-pair { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+.rc-field {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  min-width: 0;
+}
+.rc-label {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--dim); font-weight: 650; margin-bottom: 5px;
+}
+.rc-value { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rc-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.rc-link { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); min-width: 0; }
+.rc-link:hover { text-decoration: underline; }
+.rc-link svg { flex-shrink: 0; opacity: .7; }
+.rc-copy {
+  margin-left: auto; flex-shrink: 0; background: none; border: 1px solid var(--line-2);
+  border-radius: 5px; color: var(--dim); font-size: 10.5px; letter-spacing: .04em;
+  padding: 2px 7px; cursor: pointer; text-transform: uppercase; font-weight: 620;
+}
+.rc-copy:hover { background: var(--hover); color: var(--text); filter: none; }
+.rc-hint { font-size: 11.5px; color: var(--dim); margin-top: 6px; line-height: 1.45; }
+
+/* ---------------------------------------------------------------- purchase success */
+.ps-overlay { animation: ps-fade .2s ease-out; }
+@keyframes ps-fade { from { opacity: 0; } }
+
+.ps-card {
+  width: 100%; max-width: 400px; text-align: center;
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 18px;
+  padding: 30px 28px 26px; box-shadow: 0 28px 80px rgba(37,42,36,.22);
+  animation: ps-rise .34s cubic-bezier(.16,.84,.44,1) both;
+}
+@keyframes ps-rise {
+  from { opacity: 0; transform: translateY(16px) scale(.97); }
+}
+
+.ps-seal { display: grid; place-items: center; margin-bottom: 16px; }
+.ps-seal svg { overflow: visible; }
+.ps-seal-ring { fill: none; stroke: var(--green); stroke-opacity: .22; stroke-width: 2; }
+.ps-seal-fill { fill: var(--green); fill-opacity: .1; }
+.ps-seal-tick {
+  fill: none; stroke: var(--green); stroke-width: 5;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 46; stroke-dashoffset: 0;
+  animation: ps-draw .5s cubic-bezier(.65,0,.35,1) .12s both;
+}
+@keyframes ps-draw { from { stroke-dashoffset: 46; } }
+
+.ps-title { font-size: 21px; margin: 0 0 8px; letter-spacing: -.02em; }
+.ps-lead { font-size: 14px; color: var(--muted); margin: 0 0 20px; line-height: 1.5; }
+
+.ps-order {
+  text-align: left; background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 13px 14px; margin-bottom: 18px;
+}
+.ps-hash { display: inline-block; margin-top: 8px; color: var(--accent); }
+.ps-hash:hover { text-decoration: underline; }
+
+.ps-list { list-style: none; margin: 0 0 22px; padding: 0; text-align: left; display: grid; gap: 11px; }
+.ps-step {
+  display: flex; align-items: center; gap: 11px; font-size: 13.5px;
+  opacity: 0; transform: translateY(6px);
+  transition: opacity .3s ease-out, transform .3s cubic-bezier(.16,.84,.44,1);
+}
+.ps-step.in { opacity: 1; transform: none; }
+.ps-step.active { color: var(--text); }
+.ps-step.todo { color: var(--dim); }
+.ps-step-label { flex: 1; min-width: 0; }
+.ps-eta {
+  color: var(--amber); border: 1px solid #E4D1A2; background: #FAF0D6;
+  border-radius: 20px; padding: 1px 8px; font-weight: 620; flex-shrink: 0;
+}
+
+.ps-mark {
+  width: 21px; height: 21px; flex: 0 0 21px; border-radius: 50%;
+  display: grid; place-items: center; border: 1px solid var(--line-2); background: var(--panel-2);
+}
+.ps-step.done .ps-mark { background: var(--green); border-color: var(--green); color: var(--panel); }
+.ps-mark-tick {
+  fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 22; stroke-dashoffset: 0;
+}
+/* Each tick draws itself as its row arrives, keyed off the same .in the row animates with. */
+.ps-step.in .ps-mark-tick { animation: ps-tick .34s cubic-bezier(.65,0,.35,1) .1s both; }
+@keyframes ps-tick { from { stroke-dashoffset: 22; } }
+
+/* In progress: a ring being drawn. Not started: a plain dot, which claims nothing. */
+.ps-spin {
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 1.8px solid #E4D1A2; border-top-color: var(--amber);
+  animation: ps-rotate .9s linear infinite;
+}
+.ps-step.active .ps-mark { border-color: #E4D1A2; background: #FAF0D6; }
+.ps-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--line-2); }
+@keyframes ps-rotate { to { transform: rotate(360deg); } }
+
+.ps-actions { display: flex; gap: 10px; }
+
+/* The balance and its breakdown, side by side, so one card can hold the full page width. */
+.cash-card { display: grid; gap: 32px; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
+.cash-main { display: flex; flex-direction: column; align-items: flex-start; }
+.cash-total { margin: 6px 0 20px; }
+.cash-main > button { width: 100%; }
+.cash-split { border-left: 1px solid var(--line); padding-left: 32px; }
+@media (max-width: 780px) {
+  .cash-card { grid-template-columns: 1fr; gap: 24px; }
+  .cash-split { border-left: 0; border-top: 1px solid var(--line); padding: 24px 0 0; }
+}

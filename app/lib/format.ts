@@ -31,3 +31,22 @@ export const timeAgo = (ts: number) => {
   if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
   return `${Math.floor(d / 86400)}d ago`;
 };
+
+/// Absolute time, for the places where "3h ago" is not enough to reconcile against an explorer.
+export const fullTime = (ts: number) =>
+  new Date(ts * 1000).toLocaleString(undefined, {
+    year: "numeric", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+
+/// Long enough to compare against an explorer at a glance, short enough not to wrap a table cell.
+export const midHash = (h?: string) => (h ? `${h.slice(0, 10)}…${h.slice(-8)}` : "—");
+
+/// Time remaining, at the resolution someone waiting for it actually cares about.
+export function timeUntil(seconds: number) {
+  if (seconds <= 0) return "now";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return m > 0 ? `${m}m` : "under a minute";
+}

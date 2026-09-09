@@ -62,6 +62,9 @@ flowchart LR
 | On-chain verification | [`VouchCore.recordPurchase`](contracts/src/VouchCore.sol) calls `verifyAndEmit` on `0x0000000000000000000000000000000000000FD2` |
 | Proof payload | Source block height, encoded transaction bytes, Merkle proof, and continuity proof |
 | Receipt decoding | Vendored [`EvmV1Decoder`](contracts/src/vendor/EvmV1Decoder.sol) decodes transaction fields, receipt status, and ERC-20 event logs |
+| Price source network | Ethereum mainnet, EVM chain ID `1`; configured Attestcoin chain key `3` |
+| Price pair | Uniswap V2 WCTC (old) / USDT `0x4a4F4fcA1a9B673f9eB23b7EeFe9dFbafd8D8140` (no CTC/USDC V2 pair exists on mainnet) |
+| Price proof | [`PriceOracle.pushSyncProof`](contracts/src/PriceOracle.sol) verifies a mainnet swap through the same `0x0FD2` precompile and reads the pair's `Sync` log |
 
 The purchase contract checks that the proof verifies, the receipt succeeded, the transaction targets the configured payment token, and the source transaction sender matches the Creditcoin caller. It then finds a `Transfer` log emitted by that token, from the payer to a registered, active merchant. The reward amount comes from that event, rather than the transaction's native ETH value.
 
@@ -69,9 +72,23 @@ A source transaction can be claimed only once. Its identity is `(chainKey, heigh
 
 The proof route is stateless and reports `pending`, `ready`, or `error`. It attempts proof retrieval even when the attested height has caught up, because the prover cache may still lag. A server response alone cannot authorize rewards: verification happens in the Creditcoin transaction.
 
-**Additional integration: price observations.** [`PriceOracle.pushSyncProof`](contracts/src/PriceOracle.sol) uses the same verifier and decoder to read a Uniswap V2 `Sync` event from a configured pair. It checks receipt success, the emitting pair, increasing source heights, nonzero reserves, and configured rate bounds. App cashback also requires a fresh rate. The seed script uses an explicitly marked **manual rate of 2 CTC per demo dollar**; it does not configure a pool or demonstrate a live proof-backed market price.
+**Additional integration: price observations.** Payments stay on Sepolia (chain key `1`). App cashback is priced from Ethereum mainnet (chain key `3`). [`PriceOracle.pushSyncProof`](contracts/src/PriceOracle.sol) uses the same verifier and decoder to read a Uniswap V2 `Sync(uint112,uint112)` event from the configured pair. It checks receipt success, the emitting pair, increasing source heights, nonzero reserves, and configured rate bounds. App cashback requires that proven rate to be fresh.
 
-See [`ATTESTCOIN.md`](ATTESTCOIN.md) for earlier protocol experiments and deployment notes. Its ETH-payment transactions, XP formula, and deployment table describe an older iteration, not verification of the current MockUSDC flow.
+There is no CTC/USDC Uniswap V2 pool on mainnet or Sepolia. The configured pair is Uniswap V2 **WCTC (old) / USDT**, which emits `Sync` and quotes a USD stablecoin at 6 decimals. Uniswap V3 WCTC/USDT cannot be used: it does not emit `Sync`.
+
+A live mainnet Sync was proven onto Creditcoin CC3 testnet:
+
+| Step | Evidence |
+| --- | --- |
+| Source swap (Ethereum) | `0xfdcae0146c9106fe200fd2825671ee5e152a0bf69be5c1df6a1a4a97560a9523`, block `25938627` |
+| Attestcoin chain key | `3` (Ethereum), attested at or above that height |
+| `0x0FD2.verify` | `true` |
+| `pushSyncProof` (Creditcoin) | `0x87f64fafc226a4e25d63e63577efd42a85a40a72a3986fd2f12d80c7cf751705`, status 1 |
+| Result | `ctcPerUsd` ≈ 12.998 CTC per $1, `isManual = false` |
+
+Merchant quest and campaign cashback is unchanged: it is funded in CTC and does not use the oracle. Refresh the rate with `pnpm sync:price` after deploying a new oracle.
+
+See [`ATTESTCOIN.md`](ATTESTCOIN.md) for protocol constants, the live price-proof notes, and earlier ETH-payment experiments. The older XP formula and first deployment table in that file describe a prior iteration, not the current MockUSDC flow.
 
 ## Progression and cashback
 
@@ -102,7 +119,7 @@ The frontend uses **Next.js 15, React 19, TypeScript, wagmi, viem, and TanStack 
 | `QuestManager` | Purchase requirements, level gates, and quest completion |
 | `RewardVault` | Merchant quest funding and cashback withdrawals |
 | `MilestoneManager` | Community targets, participation, budgets, and claims |
-| `PriceOracle` | Proven reserve observations or an explicitly marked manual rate |
+| `PriceOracle` | Proven Uniswap V2 `Sync` reserves from Ethereum mainnet (WCTC/USDT) |
 | `AppCashback` | Level-based percentage rewards from the app treasury |
 | `MockUSDC` | Six-decimal Sepolia demo token with an open faucet |
 
@@ -146,7 +163,7 @@ NEXT_PUBLIC_QUEST_MANAGER=0x19B1aA6eAb81cBC6d742A966633a9F867b31F7D1
 NEXT_PUBLIC_REWARD_VAULT=0xD94278AF61cB016CEc7Be98a25E7b0ecf01D61ac
 NEXT_PUBLIC_MILESTONE_MANAGER=0xD295ADCce48f68B6b2369521a2eFc6f4260305a4
 NEXT_PUBLIC_CATALOG=0x1eb050Db90c64Ca67C2F424414b7C193E7040Bb9
-NEXT_PUBLIC_PRICE_ORACLE=0xcA48e16f2024121B0aE93017303Dc758035E5A6C
+NEXT_PUBLIC_PRICE_ORACLE=0xE705Ee700Cd619e98751ca1D072B87931Ce5e81D
 NEXT_PUBLIC_APP_CASHBACK=0x9E7063023e65CD1c593C7d0397C3F7692Af92700
 NEXT_PUBLIC_PAYMENT_TOKEN=0xBcb107E49F78C9dBa122eA31137B6ED903F65AeC
 
@@ -194,7 +211,14 @@ Before seeding, export the resulting addresses as `COMMERCE_REGISTRY`, `QUEST_MA
 pnpm seed --gas-estimate-multiplier 300
 ```
 
-Seeding needs **32 test CTC plus gas** and is intended for a fresh deployment. Copy all deployed addresses into the corresponding frontend environment variables, then restart the app. Keep deployment keys in the shell environment, never in `NEXT_PUBLIC_*` variables.
+Seeding needs **2012 test CTC plus gas** (merchant campaigns plus a 2000 CTC app-cashback treasury) and is intended for a fresh deployment. After seed, run `pnpm sync:price` so the oracle records a proven mainnet `Sync`. Copy all deployed addresses into the corresponding frontend environment variables, then restart the app. Keep deployment keys in the shell environment, never in `NEXT_PUBLIC_*` variables.
+
+To point an already-seeded `AppCashback` at a new mainnet-keyed oracle without touching merchant vaults:
+
+```bash
+APP_CASHBACK=0x… pnpm oracle:mainnet --gas-estimate-multiplier 300
+PRICE_ORACLE=<new oracle> pnpm sync:price
+```
 
 The repository's deployment notes record low gas estimates and Foundry receipt-polling issues on CC3. Keep the configured London EVM target and verify deployment and wiring results on-chain if the script reports polling errors.
 
@@ -209,10 +233,10 @@ The coverage has two distinct layers:
 
 Remaining prototype constraints:
 
-- **Administrative controls:** protocol owners can change reward settings and oracle configuration. The seeded conversion rate is manual and expires under the oracle's freshness rules.
+- **Administrative controls:** protocol owners can change reward settings and oracle configuration.
 - **Inventory timing:** stock is consumed at claim time, not payment time. A stale or sold-out item can leave a verified payment with a receipt and stars but no recorded catalog sale. Item selection does not prove physical fulfillment.
 - **Asynchronous infrastructure:** claims depend on source attestation, prover availability, and RPC access. Pending-payment tracking is stored in browser `localStorage`.
 - **Scale:** the UI enumerates contract records without a dedicated indexer.
 - **Legacy CLI:** `scripts/claim.mjs` submits the current claim arguments, but its final profile formatter still expects old ETH/XP fields and can fail after submission. Use the browser claim flow for the current demo.
 
-Useful next steps are a recorded live MockUSDC proof-to-reward demonstration, a configured and evaluated price source, better pending-payment recovery, and an inventory reservation strategy.
+Useful next steps are a recorded live MockUSDC proof-to-reward demonstration, better pending-payment recovery, and an inventory reservation strategy.

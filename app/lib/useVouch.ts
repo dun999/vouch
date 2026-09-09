@@ -15,6 +15,7 @@ import {
 } from "./abis";
 import { addresses, isDeployed } from "./addresses";
 import { creditcoinTestnet, sepolia } from "./chains";
+import { passDataUri, renderPassSvg } from "./passArt";
 
 const chainId = creditcoinTestnet.id;
 
@@ -407,7 +408,13 @@ export function useMyQuestProgress(questIds: bigint[], address?: `0x${string}`) 
   return { map, refetch: res.refetch };
 }
 
-/// The pass's on-chain art, decoded from its data: tokenURI. Nothing is fetched off-chain.
+/// The pass image.
+///
+/// BenefitPass renders its own art on-chain, and that tokenURI stays the canonical token image.
+/// The console draws it locally from the same inputs (see lib/passArt.ts) so a re-cut of the art
+/// shows up without redeploying — VouchCore holds its BenefitPass address as an immutable, so
+/// moving the art on-chain means moving the whole protocol. `pnpm pass:check` proves the two
+/// renderers emit identical bytes.
 export function usePassArt(address?: `0x${string}`) {
   const tokenId = useReadContract({
     address: addresses.BenefitPass,
@@ -415,30 +422,28 @@ export function usePassArt(address?: `0x${string}`) {
     functionName: "tokenOfOwner",
     args: address ? [address] : undefined,
     chainId,
-    query: { enabled: isDeployed && !!address },
+    query: { enabled: isDeployed && !!address, refetchInterval: 15000 },
   });
+
+  const profile = useProfile(address);
+  const thresholds = useLevelThresholds();
 
   const id = (tokenId.data as bigint | undefined) ?? 0n;
-  const uri = useReadContract({
-    address: addresses.BenefitPass,
-    abi: BenefitPassAbi,
-    functionName: "tokenURI",
-    args: [id],
-    chainId,
-    query: { enabled: isDeployed && id > 0n, refetchInterval: 15000 },
+  const p = profile.data as any;
+
+  if (id === 0n || !address) return { tokenId: 0n, image: undefined, level: 1, stars: 0n };
+
+  const level = p ? Number(p.level) : 1;
+  const stars = p ? BigInt(p.stars) : 0n;
+  const svg = renderPassSvg({
+    tokenId: id,
+    user: address,
+    level,
+    stars,
+    thresholds: (thresholds.data as readonly bigint[] | undefined) ?? [],
   });
 
-  let image: string | undefined;
-  const raw = uri.data as string | undefined;
-  if (raw?.startsWith("data:application/json;base64,")) {
-    try {
-      const json = JSON.parse(atob(raw.slice("data:application/json;base64,".length)));
-      image = json.image;
-    } catch {
-      /* a malformed tokenURI should not take the page down */
-    }
-  }
-  return { tokenId: id, image };
+  return { tokenId: id, image: passDataUri(svg), level, stars };
 }
 
 export type Receipt = {
@@ -451,7 +456,10 @@ export type Receipt = {
   sourceTxIndex: bigint;
   timestamp: bigint;
   starsEarned: bigint;
+  /// Merchant-funded, from a completed quest.
   cashbackEarned: bigint;
+  /// Protocol-funded, from the level rate.
+  appCashbackEarned: bigint;
   levelAfter: number;
 };
 

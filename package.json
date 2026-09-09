@@ -8,8 +8,11 @@
     "test": "cd contracts && forge test",
     "abis": "node scripts/extract-abis.mjs",
     "claim": "node scripts/claim.mjs",
+    "pass:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/pass-check.mjs",
     "seed": "cd contracts && forge script script/Seed.s.sol --rpc-url creditcoin --broadcast",
-    "deploy": "cd contracts && forge script script/Deploy.s.sol --rpc-url creditcoin --broadcast"
+    "deploy": "cd contracts && forge script script/Deploy.s.sol --rpc-url creditcoin --broadcast",
+    "oracle:mainnet": "cd contracts && forge script script/ConfigureMainnetOracle.s.sol --rpc-url creditcoin --broadcast",
+    "sync:price": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/push-sync-proof.mjs"
   },
   "devDependencies": {
     "ethers": "^6.15.0"

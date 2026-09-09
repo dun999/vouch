@@ -23,6 +23,10 @@ export { sepolia };
 ///   [(3, 1, "Ethereum"), (1, 11155111, "Sepolia ethereum")]
 /// Note the SDK's own doc comments show chainKey 1 as Ethereum MAINNET -- on CC3 testnet it is Sepolia.
 export const SEPOLIA_CHAIN_KEY = 1;
+/// Ethereum mainnet on CC3 testnet. Used by PriceOracle for Uniswap V2 Sync proofs.
+export const ETHEREUM_CHAIN_KEY = 3;
+/// Uniswap V2 WCTC (old) / USDT on Ethereum. No CTC/USDC V2 pair exists on mainnet.
+export const MAINNET_WCTC_USDT_V2 = "0x4a4F4fcA1a9B673f9eB23b7EeFe9dFbafd8D8140" as const;
 
 export const BLOCK_PROVER_PRECOMPILE = "0x0000000000000000000000000000000000000FD2" as const;
 export const CHAIN_INFO_PRECOMPILE = "0x0000000000000000000000000000000000000fd3" as const;
@@ -36,3 +40,19 @@ export const PROVER_URLS = [
 
 /// Sepolia blocks are ~12s and attestation trailed head by ~43 blocks when measured.
 export const SEPOLIA_BLOCK_SECONDS = 12;
+
+/// Blockscout's JSON-RPC mirror of the same chain. The primary node answers a 50k-block
+/// `eth_getLogs` in ~30s and rejects anything wider outright; Blockscout answers the full range
+/// in well under a second. Provenance lookups go here, everything else stays on the node.
+export const CC_LOGS_RPC = "https://creditcoin-testnet.blockscout.com/api/eth-rpc";
+
+const CC_EXPLORER = creditcoinTestnet.blockExplorers.default.url;
+const SEPOLIA_EXPLORER = "https://sepolia.etherscan.io";
+
+export const ccTxUrl = (hash: string) => `${CC_EXPLORER}/tx/${hash}`;
+export const ccAddressUrl = (addr: string) => `${CC_EXPLORER}/address/${addr}`;
+export const ccBlockUrl = (n: bigint | number | string) => `${CC_EXPLORER}/block/${n}`;
+
+export const sepoliaTxUrl = (hash: string) => `${SEPOLIA_EXPLORER}/tx/${hash}`;
+export const sepoliaAddressUrl = (addr: string) => `${SEPOLIA_EXPLORER}/address/${addr}`;
+export const sepoliaBlockUrl = (n: bigint | number | string) => `${SEPOLIA_EXPLORER}/block/${n}`;

@@ -148,10 +148,12 @@ contract Seed is Script {
         );
 
         // ---------------------------------------------------------------- app cashback
-        // No CTC/USD pool exists on Sepolia yet, so seed an administered rate. The moment one is
-        // listed, point the oracle at it and `pushSyncProof` takes over -- see PriceOracle.
-        oracle.setRateManually(2 ether); // $1 = 2 CTC
-        appCashback.fund{value: 20 ether}();
+        // Priced from a Uniswap V2 Sync on Ethereum mainnet (Attestcoin chain key 3). There is no
+        // CTC/USDC V2 pair; WCTC(old)/USDT is the Sync-compatible USD pool. `pnpm sync:price`
+        // pushes a live proof after seed — until then the rate is unset and app cashback pays 0.
+        oracle.setPair(0x4a4F4fcA1a9B673f9eB23b7EeFe9dFbafd8D8140, true, 18, 6);
+        oracle.setBounds(0.01 ether, 10_000 ether, 7 days);
+        appCashback.fund{value: 2000 ether}();
 
         vm.stopBroadcast();
 
@@ -162,6 +164,6 @@ contract Seed is Script {
         console.log("payout coffee: %s", payoutCoffee);
         console.log("payout books : %s", payoutBooks);
         console.log("payout ramen : %s", payoutRamen);
-        console.log("Funded 5 CTC quest cashback, 7 CTC campaigns, 20 CTC app cashback treasury.");
+        console.log("Funded 5 CTC quest cashback, 7 CTC campaigns, 2000 CTC app cashback treasury.");
     }
 }

@@ -18,6 +18,8 @@ import {NativeQueryVerifierLib} from "../src/vendor/INativeQueryVerifier.sol";
 contract Deploy is Script {
     /// Sepolia's Attestcoin chain key, confirmed from `get_supported_chains()` on 0x0FD3.
     uint64 constant SEPOLIA_CHAIN_KEY = 1;
+    /// Ethereum mainnet. PriceOracle reads Uniswap V2 Sync events from this chain; payments stay on Sepolia.
+    uint64 constant ETHEREUM_CHAIN_KEY = 3;
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -39,7 +41,7 @@ contract Deploy is Script {
         RewardVault vault = new RewardVault(address(registry), address(core));
         MilestoneManager milestones = new MilestoneManager(address(registry), address(core));
         Catalog catalog = new Catalog(address(registry), address(core));
-        PriceOracle oracle = new PriceOracle(SEPOLIA_CHAIN_KEY, address(0), deployer);
+        PriceOracle oracle = new PriceOracle(ETHEREUM_CHAIN_KEY, address(0), deployer);
         AppCashback appCashback = new AppCashback(address(core), address(oracle), deployer);
 
         pass.setMinter(address(core));

@@ -72,141 +72,217 @@ contract BenefitPass is ERC721, Ownable {
     }
 
     // ---------------------------------------------------------------- artwork
+    //
+    // The pass is drawn as a piece of security printing, not as a poster: warm paper stock, an
+    // engine-turned guilloche rosette, a perforated stub, and micro-print along the foot. Every
+    // ornament is generated from the holder's own numbers rather than decorating around them --
+    // the rosette is the tier's ink, the ledger bar is the star count, the rail is the route the
+    // purchase actually took. Tiers change the ink colour, the way a real card series would.
+    //
+    // NOTE: app/lib/passArt.ts renders byte-identical SVG so the console can show a holder's pass
+    //       without a redeploy. Change one, change the other.
 
-    /// @dev Each tier gets its own accent so the card visibly changes as the holder levels up.
+    string private constant PAPER = "#F7F4ED";
+    string private constant INK = "#252A24";
+    string private constant MUTED = "#6E7468";
+    string private constant RULE = "#C8C9BD";
+
+    /// @dev Tier ink. Graphite, then green, indigo, the house terracotta, and gold at the top.
     function _tier(uint32 level) private pure returns (string memory accent, string memory name) {
-        if (level >= 5) return ("#f0abfc", "FOUNDING MEMBER");
-        if (level == 4) return ("#fbbf24", "PATRON");
-        if (level == 3) return ("#a78bfa", "INSIDER");
-        if (level == 2) return ("#38bdf8", "REGULAR");
-        return ("#94a3b8", "NEWCOMER");
+        if (level >= 5) return ("#8A6A17", "FOUNDING MEMBER");
+        if (level == 4) return ("#AD462C", "PATRON");
+        if (level == 3) return ("#1F5670", "INSIDER");
+        if (level == 2) return ("#286047", "REGULAR");
+        return ("#6E7468", "NEWCOMER");
     }
 
-    /// @dev Progress through the current tier, 0-100. Full bar at max level.
-    function _progressPct(uint32 level, uint256 stars) private view returns (uint256) {
-        if (address(progression) == address(0)) return 0;
+    /// @dev Progress through the current tier and the line printed under the ledger bar.
+    function _ladder(uint32 level, uint256 stars)
+        private
+        view
+        returns (uint256 pct, string memory note)
+    {
+        if (address(progression) == address(0)) return (0, "AWAITING FIRST VERIFIED PURCHASE");
+
         uint256[] memory thr = progression.getLevelThresholds();
-        if (level == 0 || level - 1 >= thr.length) return 100;
+        if (level == 0 || level - 1 >= thr.length) return (100, "HIGHEST TIER REACHED");
+
         uint256 next = thr[level - 1];
         uint256 prev = level >= 2 ? thr[level - 2] : 0;
-        if (next <= prev || stars <= prev) return 0;
-        uint256 pct = ((stars - prev) * 100) / (next - prev);
-        return pct > 100 ? 100 : pct;
+        note = string.concat(
+            Strings.toString(stars >= next ? 0 : next - stars),
+            " STARS TO LEVEL ",
+            Strings.toString(level + 1)
+        );
+        if (next <= prev || stars <= prev) return (0, note);
+        pct = ((stars - prev) * 100) / (next - prev);
+        if (pct > 100) pct = 100;
     }
 
-    function _defs(string memory accent) private pure returns (string memory) {
+    /// @dev Engine turning. Two families of rotated ellipses interfere into a rosette -- the same
+    ///      construction a banknote lathe draws, and the reason it is hard to fake by hand.
+    function _rosette(uint32 level, string memory accent) private pure returns (string memory out) {
+        // A higher tier is a more finely turned plate: more lines on the lathe, same diameter.
+        uint256 outer = 24 + uint256(level > 5 ? 5 : level) * 5;
+        uint256 inner = 12 + uint256(level > 5 ? 5 : level) * 3;
+
+        out = string.concat(
+            '<g transform="translate(173,208)" fill="none" stroke="', accent, '">',
+            '<g stroke-width="0.45" opacity="0.38">'
+        );
+        for (uint256 i = 0; i < outer; i++) {
+            out = string.concat(
+                out,
+                '<ellipse rx="88" ry="28" transform="rotate(',
+                Strings.toString((i * 180) / outer),
+                ')"/>'
+            );
+        }
+        out = string.concat(out, '</g><g stroke-width="0.4" opacity="0.3">');
+        for (uint256 i = 0; i < inner; i++) {
+            out = string.concat(
+                out,
+                '<ellipse rx="54" ry="15" transform="rotate(',
+                Strings.toString((i * 180) / inner + 7),
+                ')"/>'
+            );
+        }
+        return string.concat(out, "</g></g>");
+    }
+
+    function _header(uint256 tokenId, string memory accent) private pure returns (string memory) {
         return string.concat(
-            '<defs>',
-            '<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">',
-            '<stop offset="0%" stop-color="#0a0f1e"/><stop offset="55%" stop-color="#111a33"/>',
-            '<stop offset="100%" stop-color="#1b1740"/></linearGradient>',
-            '<linearGradient id="acc" x1="0" y1="0" x2="1" y2="1">',
-            '<stop offset="0%" stop-color="', accent, '"/><stop offset="100%" stop-color="#6366f1"/>',
-            '</linearGradient>',
-            '<radialGradient id="glow" cx="50%" cy="50%" r="50%">',
-            '<stop offset="0%" stop-color="', accent, '" stop-opacity="0.35"/>',
-            '<stop offset="100%" stop-color="', accent, '" stop-opacity="0"/></radialGradient>',
-            '<pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">',
-            '<path d="M24 0H0V24" fill="none" stroke="#ffffff" stroke-opacity="0.045"/></pattern>',
-            '<clipPath id="card"><rect x="10" y="10" width="380" height="540" rx="24"/></clipPath>',
-            '</defs>'
+            '<rect x="34" y="34" width="28" height="28" rx="8" fill="', accent, '"/>',
+            '<text x="48" y="54" font-family="Georgia, serif" font-size="17" font-weight="bold"',
+            ' fill="', PAPER, '" text-anchor="middle">V</text>',
+            '<text x="72" y="49" font-family="Georgia, serif" font-size="15" fill="', INK,
+            '" letter-spacing="3.4">VOUCH</text>',
+            '<text x="73" y="63" font-family="monospace" font-size="7.5" fill="', MUTED,
+            '" letter-spacing="2.4">BENEFIT PASS</text>',
+            '<text x="312" y="49" font-family="monospace" font-size="9" fill="', accent,
+            '" text-anchor="end" letter-spacing="1.4">CREDITCOIN CC3</text>',
+            '<text x="312" y="63" font-family="monospace" font-size="7.5" fill="', MUTED,
+            '" text-anchor="end" letter-spacing="1.4">NON-TRANSFERABLE</text>',
+            '<path d="M34 78h278" stroke="', RULE, '" stroke-width="1"/>',
+            '<path d="M34 81h278" stroke="', RULE, '" stroke-width="0.4"/>',
+            _stub(tokenId, accent)
         );
     }
 
-    function _header(string memory accent) private pure returns (string memory) {
+    /// @dev The tear-off stub. A pass that cannot be transferred still gets the anatomy of a
+    ///      ticket, because that is the object it stands in for.
+    function _stub(uint256 tokenId, string memory accent) private pure returns (string memory) {
         return string.concat(
-            '<rect x="32" y="34" width="30" height="30" rx="9" fill="url(#acc)"/>',
-            '<text x="47" y="55" font-family="monospace" font-size="18" font-weight="bold"',
-            ' fill="#0a0f1e" text-anchor="middle">V</text>',
-            '<text x="74" y="50" font-family="monospace" font-size="17" fill="#e8eef8"'
-            ' letter-spacing="2">VOUCH</text>',
-            '<text x="74" y="64" font-family="monospace" font-size="9" fill="', accent,
-            '" letter-spacing="3">BENEFIT PASS</text>',
-            // Padlock: the pass is soulbound, and the art should say so without words.
-            '<g transform="translate(340,36)" fill="none" stroke="', accent, '" stroke-width="2">',
-            '<rect x="2" y="9" width="16" height="13" rx="3" fill="', accent, '" fill-opacity="0.18"/>',
-            '<path d="M6 9V6a4 4 0 0 1 8 0v3"/></g>',
-            '<path d="M32 84h336" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1"/>'
+            '<path d="M326 20v520" stroke="', RULE, '" stroke-width="1" stroke-dasharray="2 4"/>',
+            '<circle cx="326" cy="20" r="4" fill="', PAPER, '" stroke="', RULE, '" stroke-width="0.8"/>',
+            '<circle cx="326" cy="540" r="4" fill="', PAPER, '" stroke="', RULE, '" stroke-width="0.8"/>',
+            '<rect x="342" y="34" width="22" height="4" rx="2" fill="', accent, '"/>',
+            '<g transform="translate(353,290) rotate(-90)" text-anchor="middle">',
+            '<text y="-6" font-family="Georgia, serif" font-size="16" fill="', INK,
+            '" letter-spacing="2">No. ', Strings.toString(tokenId), '</text>',
+            '<text y="9" font-family="monospace" font-size="7" fill="', MUTED,
+            '" letter-spacing="3.2">SOULBOUND</text></g>',
+            '<rect x="342" y="522" width="22" height="4" rx="2" fill="', accent, '"/>'
         );
     }
 
-    /// @dev The object the pass is actually about: a paper receipt, stamped as verified.
-    function _receipt(string memory accent) private pure returns (string memory) {
-        return string.concat(
-            '<g transform="translate(112,106)">',
-            '<rect x="6" y="8" width="176" height="182" rx="6" fill="#000000" fill-opacity="0.35"/>',
-            // Paper, with a torn zigzag bottom edge.
-            '<path d="M0 0h176v168l-11 7-11-7-11 7-11-7-11 7-11-7-11 7-11-7-11 7-11-7-11 7-11-7-11 7-11-7-11 7-11-7z"',
-            ' fill="#f6f8fc"/>',
-            '<text x="16" y="30" font-family="monospace" font-size="11" fill="#0f172a"',
-            ' letter-spacing="2">RECEIPT</text>',
-            '<path d="M16 40h144" stroke="#0f172a" stroke-opacity="0.25" stroke-width="1"/>',
-            // Line items.
-            '<g fill="#0f172a" fill-opacity="0.72">',
-            '<rect x="16" y="52" width="72" height="6" rx="3"/><rect x="126" y="52" width="34" height="6" rx="3"/>',
-            '<rect x="16" y="68" width="88" height="6" rx="3"/><rect x="132" y="68" width="28" height="6" rx="3"/>',
-            '<rect x="16" y="84" width="60" height="6" rx="3"/><rect x="130" y="84" width="30" height="6" rx="3"/>',
-            '</g>',
-            '<path d="M16 102h144" stroke="#0f172a" stroke-opacity="0.25" stroke-dasharray="3 3"/>',
-            '<rect x="16" y="112" width="46" height="8" rx="4" fill="#0f172a"/>',
-            '<rect x="112" y="112" width="48" height="8" rx="4" fill="#0f172a"/>',
-            // Barcode, drawn as one thick dashed stroke.
-            '<path d="M16 142h144" stroke="#0f172a" stroke-width="20"',
-            ' stroke-dasharray="3 4 6 3 2 5 7 3 3 6 2 4 8 3 3 5 2 6"/>',
-            '</g>',
-            // Verification seal, overlapping the receipt's corner.
-            '<g transform="translate(258,236)">',
-            '<circle r="34" fill="#0a0f1e" stroke="', accent, '" stroke-width="2"/>',
-            '<circle r="27" fill="none" stroke="', accent, '" stroke-opacity="0.45" stroke-dasharray="2 4"/>',
-            '<path d="M-12 1l8 9 17-19" fill="none" stroke="', accent,
-            '" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>',
-            '<text y="24" font-family="monospace" font-size="7" fill="', accent,
-            '" text-anchor="middle" letter-spacing="1">ATTESTED</text></g>'
-        );
-    }
-
-    function _level(uint32 level, string memory accent, string memory tierName)
+    /// @dev The medallion: tier ink, engraved rules, and the level set in a book face.
+    function _medallion(uint32 level, string memory accent, string memory tierName)
         private
         pure
         returns (string memory)
     {
         return string.concat(
-            '<g transform="translate(32,318)">',
-            '<path d="M28 0l24 14v28L28 56 4 42V14z" fill="url(#acc)" fill-opacity="0.18" stroke="', accent,
-            '" stroke-width="1.5"/>',
-            '<text x="28" y="36" font-family="monospace" font-size="20" font-weight="bold" fill="', accent,
-            '" text-anchor="middle">', Strings.toString(level), '</text>',
-            '<text x="70" y="24" font-family="monospace" font-size="11" fill="#94a3b8"',
-            ' letter-spacing="2">LEVEL</text>',
-            '<text x="70" y="46" font-family="monospace" font-size="15" fill="#e8eef8"',
-            ' letter-spacing="1">', tierName, '</text></g>'
+            '<g transform="translate(173,208)">',
+            '<circle r="46" fill="', PAPER, '" fill-opacity="0.94"/>',
+            '<circle r="46" fill="none" stroke="', accent, '" stroke-width="1.2"/>',
+            '<circle r="40" fill="none" stroke="', accent,
+            '" stroke-width="0.5" stroke-dasharray="1 3"/>',
+            '<text y="-16" font-family="monospace" font-size="7" fill="', MUTED,
+            '" text-anchor="middle" letter-spacing="3.4">LEVEL</text>',
+            '<text y="22" font-family="Georgia, serif" font-size="46" fill="', accent,
+            '" text-anchor="middle">', Strings.toString(level), '</text></g>',
+            '<path d="M34 317h', _flankWidth(tierName), '" stroke="', RULE, '" stroke-width="0.6"/>',
+            '<text x="173" y="322" font-family="Georgia, serif" font-size="14" fill="', INK,
+            '" text-anchor="middle" letter-spacing="4">', tierName, '</text>',
+            '<path d="M312 317h-', _flankWidth(tierName), '" stroke="', RULE, '" stroke-width="0.6"/>'
         );
     }
 
-    function _progress(uint256 stars, uint256 pct, string memory accent) private pure returns (string memory) {
+    /// @dev The rules either side of the tier name stop short of it, so a long name never
+    ///      collides with them. 7px per character is the width of this face at 14px.
+    function _flankWidth(string memory tierName) private pure returns (string memory) {
+        uint256 half = (bytes(tierName).length * 9) / 2 + 12;
+        return Strings.toString(half >= 139 ? 10 : 139 - half);
+    }
+
+    /// @dev The star count as a ledger bar: twenty engraved cells, filled to the tier's progress.
+    function _ledger(uint256 stars, uint256 pct, string memory accent, string memory note)
+        private
+        pure
+        returns (string memory out)
+    {
+        out = string.concat(
+            '<text x="34" y="358" font-family="monospace" font-size="7.5" fill="', MUTED,
+            '" letter-spacing="2.6">VERIFIED STARS</text>',
+            '<text x="312" y="360" font-family="Georgia, serif" font-size="18" fill="', accent,
+            '" text-anchor="end">', Strings.toString(stars), '</text><g>'
+        );
+        uint256 filled = (pct * 20 + 50) / 100;
+        for (uint256 i = 0; i < 20; i++) {
+            out = string.concat(
+                out,
+                '<rect x="', Strings.toString(34 + i * 14), '" y="370" width="12" height="9" rx="1.5" ',
+                i < filled
+                    ? string.concat('fill="', accent, '"/>')
+                    : string.concat('fill="none" stroke="', RULE, '" stroke-width="0.8"/>')
+            );
+        }
         return string.concat(
-            '<g transform="translate(32,398)">',
-            '<text font-family="monospace" font-size="9" fill="#64748b" letter-spacing="2">VERIFIED STARS</text>',
-            '<text x="336" font-family="monospace" font-size="9" fill="', accent,
-            '" text-anchor="end" letter-spacing="1">', Strings.toString(stars), '</text>',
-            '<rect y="10" width="336" height="8" rx="4" fill="#ffffff" fill-opacity="0.08"/>',
-            '<rect y="10" width="', Strings.toString((336 * pct) / 100),
-            '" height="8" rx="4" fill="url(#acc)"/></g>'
+            out, '</g>',
+            '<text x="34" y="396" font-family="monospace" font-size="7.5" fill="', MUTED,
+            '" letter-spacing="1.8">', note, '</text>'
         );
     }
 
-    /// @dev The route the stars actually travelled. Sepolia pays, Attestcoin proves, Creditcoin records.
+    /// @dev The route the stars travelled. Sepolia pays, Attestcoin proves, Creditcoin records --
+    ///      three marks, drawn as three different things, because they are three different acts.
     function _rail(string memory accent) private pure returns (string memory) {
         return string.concat(
-            '<g transform="translate(32,452)" font-family="monospace" font-size="8" fill="#64748b">',
-            '<path d="M8 12h320" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1"/>',
-            '<circle cx="8" cy="12" r="5" fill="#0a0f1e" stroke="#64748b" stroke-width="2"/>',
-            '<circle cx="168" cy="12" r="6" fill="', accent, '" fill-opacity="0.25" stroke="', accent,
-            '" stroke-width="2"/>',
-            '<circle cx="328" cy="12" r="5" fill="', accent, '" stroke="', accent, '" stroke-width="2"/>',
-            '<text x="0" y="32" letter-spacing="1">SEPOLIA</text>',
-            '<text x="168" y="32" text-anchor="middle" letter-spacing="1" fill="', accent, '">ATTESTCOIN</text>',
-            '<text x="336" y="32" text-anchor="end" letter-spacing="1">CREDITCOIN</text></g>'
+            '<g transform="translate(0,420)">',
+            '<path d="M34 20h278" stroke="', RULE, '" stroke-width="0.8"/>',
+            // Paid: a squared-off stamp.
+            '<rect x="28" y="14" width="12" height="12" rx="2" fill="', PAPER, '" stroke="', accent,
+            '" stroke-width="1.5"/>',
+            // Proven: a filled seal with a cut mark, the only solid node on the rail.
+            '<circle cx="173" cy="20" r="9" fill="', accent, '"/>',
+            '<path d="M169 20l3 3 5-6" fill="none" stroke="', PAPER,
+            '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+            // Recorded: an open ring, because the ledger stays open.
+            '<circle cx="312" cy="20" r="6" fill="', PAPER, '" stroke="', accent, '" stroke-width="1.5"/>',
+            '<g font-family="monospace" font-size="7" fill="', MUTED, '" letter-spacing="1.6">',
+            '<text x="34" y="40">SEPOLIA</text>',
+            '<text x="173" y="40" text-anchor="middle" fill="', accent, '">ATTESTCOIN</text>',
+            '<text x="312" y="40" text-anchor="end">CREDITCOIN</text></g>',
+            '<g font-family="monospace" font-size="6" fill="', RULE, '" letter-spacing="1.2">',
+            '<text x="34" y="52">PAID</text>',
+            '<text x="173" y="52" text-anchor="middle">PROVEN</text>',
+            '<text x="312" y="52" text-anchor="end">RECORDED</text></g></g>'
+        );
+    }
+
+    /// @dev Micro-print. Legible only when enlarged, which is the point of it.
+    function _footer(address user) private pure returns (string memory) {
+        return string.concat(
+            '<path d="M34 492h278" stroke="', RULE, '" stroke-width="0.6"/>',
+            '<text x="34" y="510" font-family="monospace" font-size="8" fill="', INK,
+            '" letter-spacing="0.4">', Strings.toHexString(uint160(user), 20), '</text>',
+            '<text x="34" y="523" font-family="monospace" font-size="6.5" fill="', MUTED,
+            '" letter-spacing="1.6">BEARER OF RECORD</text>',
+            '<text x="34" y="535" font-family="monospace" font-size="3.6" fill="', RULE,
+            '" letter-spacing="0.5">',
+            "VOUCH*VERIFIED*COMMERCE*VOUCH*VERIFIED*COMMERCE*VOUCH*VERIFIED*COMMERCE*VOUCH*VERIFIED*COMMERCE*VOUCH*VERIFIED*COMMERCE*VOUCH*VERI",
+            '</text>'
         );
     }
 
@@ -216,26 +292,22 @@ contract BenefitPass is ERC721, Ownable {
         returns (string memory)
     {
         (string memory accent, string memory tierName) = _tier(level);
+        (uint256 pct, string memory note) = _ladder(level, stars);
+
         return string.concat(
             '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560" viewBox="0 0 400 560">',
-            _defs(accent),
-            '<rect width="400" height="560" fill="#05070d"/>',
-            '<g clip-path="url(#card)">',
-            '<rect x="10" y="10" width="380" height="540" fill="url(#bg)"/>',
-            '<rect x="10" y="10" width="380" height="540" fill="url(#grid)"/>',
-            '<circle cx="330" cy="120" r="190" fill="url(#glow)"/></g>',
-            '<rect x="10" y="10" width="380" height="540" rx="24" fill="none" stroke="', accent,
-            '" stroke-opacity="0.55" stroke-width="1.5"/>',
-            _header(accent),
-            _receipt(accent),
-            _level(level, accent, tierName),
-            _progress(stars, _progressPct(level, stars), accent),
+            '<rect width="400" height="560" fill="#E7E2D6"/>',
+            '<rect x="10" y="10" width="380" height="540" rx="18" fill="', PAPER,
+            '" stroke="', RULE, '" stroke-width="1"/>',
+            _rosette(level, accent),
+            '<rect x="20" y="20" width="360" height="520" rx="12" fill="none" stroke="', accent,
+            '" stroke-opacity="0.55" stroke-width="0.8"/>',
+            _header(tokenId, accent),
+            _medallion(level, accent, tierName),
+            _ledger(stars, pct, accent, note),
             _rail(accent),
-            '<text x="32" y="524" font-family="monospace" font-size="8" fill="#475569">',
-            Strings.toHexString(uint160(user), 20), '</text>',
-            '<text x="368" y="524" font-family="monospace" font-size="8" fill="#475569"',
-            ' text-anchor="end">#', Strings.toString(tokenId), ' SOULBOUND</text>',
-            '</svg>'
+            _footer(user),
+            "</svg>"
         );
     }
 

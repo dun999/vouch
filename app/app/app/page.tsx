@@ -14,6 +14,7 @@ import { addPending } from "@/lib/pending";
 import { useEnsureChain } from "@/lib/useChain";
 import { QuestCard, type BoardItem } from "@/components/QuestCard";
 import { BuyModal } from "@/components/BuyModal";
+import { PurchaseSuccess } from "@/components/PurchaseSuccess";
 
 type Filter = "all" | "quest" | "campaign";
 
@@ -44,6 +45,10 @@ export default function QuestsPage() {
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
+  /// Shown once a payment is broadcast. The purchase is not verified yet, and the card says so.
+  const [paid, setPaid] = useState<{
+    itemName: string; merchantName: string; amount: bigint; txHash: `0x${string}`;
+  } | null>(null);
 
   const p = profile.data as any;
   const level = p ? Number(p.level) : 1;
@@ -151,7 +156,12 @@ export default function QuestsPage() {
         createdAt: Date.now(),
       });
       setBuy(null);
-      setNote(`${item.name} bought. Attestcoin needs ~9 minutes to prove it — track it under Activity.`);
+      setPaid({
+        itemName: item.name,
+        merchantName: item.commerce.name,
+        amount: item.price,
+        txHash: hash,
+      });
       usdc.refetch();
       refetchItems();
     } catch (e: any) {
@@ -282,6 +292,16 @@ export default function QuestsPage() {
           ctcPerUsd={app.ctcPerUsd}
           onClose={() => setBuy(null)}
           onBuy={(item) => purchase(item, buy.questId)}
+        />
+      )}
+
+      {paid && (
+        <PurchaseSuccess
+          itemName={paid.itemName}
+          merchantName={paid.merchantName}
+          amount={paid.amount}
+          txHash={paid.txHash}
+          onClose={() => setPaid(null)}
         />
       )}
     </>

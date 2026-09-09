@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useWriteContract, usePublicClient } from "wagmi";
+import { useAccount, useBlock, useWriteContract, usePublicClient } from "wagmi";
 import { VouchCoreAbi, RewardVaultAbi, MilestoneManagerAbi, AppCashbackAbi } from "@/lib/abis";
 import { addresses, isDeployed } from "@/lib/addresses";
 import { creditcoinTestnet } from "@/lib/chains";
 import { useEnsureChain } from "@/lib/useChain";
-import { ctc, usd } from "@/lib/format";
+import { ctc, timeUntil } from "@/lib/format";
 import { BENEFITS } from "@/lib/benefits";
 import { Icon } from "@/components/Icon";
 import {
-  useProfile, useLevelThresholds, useClaimable, useMilestoneClaimable, useAppCashback,
+  useProfile, useClaimable, useMilestoneClaimable, useAppCashback,
 } from "@/lib/useVouch";
 
 const DAY_STARS = [5, 5, 10, 10, 10, 10, 60];
@@ -22,22 +22,26 @@ export default function BenefitsPage() {
   const { run: ensure } = useEnsureChain();
 
   const profile = useProfile(address);
-  const thresholds = useLevelThresholds();
   const questCash = useClaimable(address);
   const campaignCash = useMilestoneClaimable(address);
   const app = useAppCashback(address);
+  // VouchCore's day index is `block.timestamp / 1 days`, so read the chain's clock rather than
+  // the browser's: a skewed local clock would otherwise offer a check-in that reverts.
+  const head = useBlock({ chainId: creditcoinTestnet.id, query: { refetchInterval: 60_000 } });
 
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
 
   const p = profile.data as any;
   const level = p ? Number(p.level) : 1;
-  const stars = p ? BigInt(p.stars) : 0n;
   const streak = p ? Number(p.streak) : 0;
-  const thr = (thresholds.data as readonly bigint[] | undefined) ?? [];
-  const next = thr[level - 1];
-  const prev = level >= 2 ? thr[level - 2] : 0n;
-  const pct = next ? Number(((stars - prev) * 100n) / (next - prev || 1n)) : 100;
+
+  const nowSec = head.data ? Number(head.data.timestamp) : Math.floor(Date.now() / 1000);
+  const today = Math.floor(nowSec / 86400);
+  // `>=` rather than `===`: if our clock reads behind the chain, stay disabled rather than
+  // offering a check-in the contract will reject with AlreadyCheckedInToday.
+  const checkedIn = !!p && Number(p.lastCheckInDay) >= today;
+  const untilReset = (today + 1) * 86400 - nowSec;
 
   // Three contracts hold the money, but to a customer it is one balance: cashback they earned.
   const qc = (questCash.data as bigint) ?? 0n;
@@ -136,50 +140,23 @@ export default function BenefitsPage() {
         </div>
       )}
 
-      <div className="grid g2" style={{ marginBottom: 16 }}>
-        {/* ------------------------------------------------------- level */}
-        <div className="card">
-          <div className="between" style={{ marginBottom: 14 }}>
-            <div>
-              <div className="label">Benefit Pass</div>
-              <div className="stat">Level {level}</div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div className="label">Total stars</div>
-              <div className="stat">{stars.toString()}</div>
-            </div>
-          </div>
-          <div className="bar">
-            <i style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
-          </div>
-          <div className="between tiny dim" style={{ marginTop: 8 }}>
-            <span>{p ? usd(p.verifiedSpend) : "$0.00"} verified spend</span>
-            <span>{next ? `${(next - stars).toString()} stars to level ${level + 1}` : "Max level"}</span>
-          </div>
-          <div className="kv" style={{ margin: "20px 0 0" }}>
-            <div className="kv-row">
-              <span>Proven purchases</span>
-              <span>{p ? Number(p.purchaseCount) : 0}</span>
-            </div>
-            <div className="kv-row">
-              <span>Quests completed</span>
-              <span>{p ? Number(p.questsCompleted) : 0}</span>
-            </div>
-            <div className="kv-row">
-              <span>Login streak</span>
-              <span>{streak} day{streak === 1 ? "" : "s"}</span>
-            </div>
-          </div>
-          <div className="hint" style={{ marginTop: 16 }}>
-            Stars come from spend alone — $1 verified = 10 stars. No merchant can grant them.
-          </div>
-        </div>
-
-        {/* ---------------------------------------------------- cashback */}
-        <div className="card">
+      {/* ---------------------------------------------------------- cashback */}
+      <div className="card cash-card" style={{ marginBottom: 16 }}>
+        <div className="cash-main">
           <div className="label">Cashback ready to withdraw</div>
-          <div className="stat" style={{ margin: "6px 0 16px" }}>{ctc(total)} CTC</div>
-          <div className="kv" style={{ marginBottom: 18 }}>
+          <div className="stat cash-total">{ctc(total)} CTC</div>
+          <button disabled={total === 0n || busy === "w"} onClick={withdrawAll}>
+            {busy === "w" ? "Withdrawing…" : `Withdraw ${ctc(total)} CTC`}
+          </button>
+          {[qc, cc, ac].filter((v) => v > 0n).length > 1 && (
+            <div className="hint">
+              Separate pools, so your wallet will ask you to sign once for each.
+            </div>
+          )}
+        </div>
+        <div className="cash-split">
+          <div className="label" style={{ marginBottom: 12 }}>Where it came from</div>
+          <div className="kv">
             <div className="kv-row">
               <span>Your {myPct}% rate on every purchase</span>
               <span>{ctc(ac)} CTC</span>
@@ -197,14 +174,6 @@ export default function BenefitsPage() {
               <span>{p ? ctc(p.totalCashback) : "0"} CTC</span>
             </div>
           </div>
-          <button disabled={total === 0n || busy === "w"} onClick={withdrawAll}>
-            {busy === "w" ? "Withdrawing…" : `Withdraw ${ctc(total)} CTC`}
-          </button>
-          {[qc, cc, ac].filter((v) => v > 0n).length > 1 && (
-            <div className="hint">
-              Separate pools, so your wallet will ask you to sign once for each.
-            </div>
-          )}
         </div>
       </div>
 
@@ -233,9 +202,9 @@ export default function BenefitsPage() {
         </div>
         <div className="hint" style={{ marginTop: 18 }}>
           The dollar-to-CTC rate is read from a Uniswap V2 pool&apos;s <code>Sync</code> event on
-          Ethereum and proven to Creditcoin by the same precompile that proves your payment — so
-          nobody can quote you a made-up price.
-          {app.priceIsManual && " No CTC/USD pool is listed on Sepolia yet, so this deployment runs on an administered rate until one exists."}
+          Ethereum mainnet (WCTC/USDT) and proven to Creditcoin by the same precompile that proves
+          your payment — so nobody can quote you a made-up price.
+          {app.priceIsManual && " This deployment is on an administered rate, not a proven Sync."}
         </div>
       </div>
 
@@ -245,15 +214,18 @@ export default function BenefitsPage() {
         <span className="tiny dim">
           Current streak: {streak} day{streak === 1 ? "" : "s"}
         </span>
+        {checkedIn && <span className="pill ok"><i className="dot" /> Today done</span>}
       </div>
       <div className="card" style={{ marginBottom: 8 }}>
         <div className="between" style={{ marginBottom: 16 }}>
           <span className="small muted">
-            Check in once per UTC day. Miss a day and the streak resets.
+            {checkedIn
+              ? `Checked in for today. The next one opens in ${timeUntil(untilReset)}.`
+              : "Check in once per UTC day. Miss a day and the streak resets."}
           </span>
           <button
             className="sm"
-            disabled={!isConnected || busy === "ci"}
+            disabled={!isConnected || busy === "ci" || checkedIn}
             onClick={() =>
               run("ci", () =>
                 writeContractAsync({
@@ -265,7 +237,7 @@ export default function BenefitsPage() {
               )
             }
           >
-            {busy === "ci" ? "Checking in…" : "Check in today"}
+            {busy === "ci" ? "Checking in…" : checkedIn ? "Checked in today" : "Check in today"}
           </button>
         </div>
         <div className="grid" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
