@@ -369,6 +369,12 @@ tbody tr:hover { background: var(--panel-2); }
 .landing .role { height: 100%; padding: 28px; }
 .role-title { font-size: 20px; font-weight: 650; margin-bottom: 8px; }
 .role-footer { display: flex; align-items: center; justify-content: space-between; color: var(--accent); margin-top: 24px; padding-top: 16px; border-top: 1px dashed var(--line-2); font-size: 14px; font-weight: 600; }
+/* Landing demo video: direct-play card between the role grid and the footnote. */
+.demo-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 20px; margin-top: 20px;
+}
+.demo-video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 10px; background: #000; }
 .landing-note { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 28px; }
 @media (max-width: 720px) {
   .sidebar.collapsed + .main { margin-left: var(--sidebar-collapsed); }

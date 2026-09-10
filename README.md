@@ -57,6 +57,8 @@ flowchart LR
 | Source network | Ethereum Sepolia, EVM chain ID `11155111`; configured Attestcoin chain key `1` |
 | Destination network | Creditcoin CC3 testnet, EVM chain ID `102031` |
 | Proof generation | [`POST /api/proof`](app/app/api/proof/route.ts) uses `@gluwa/usc-sdk` `0.18.0` and `proofProvider.service.ProofBuilder.getProof(txHash)` |
+| Batch proof | [`POST /api/proof/batch`](app/app/api/proof/batch/route.ts) uses `getBatchProof` (≤10 txs, ≤1000 blocks) with one shared continuity proof; [`VouchCore.recordPurchasesBatch`](contracts/src/VouchCore.sol) verifies once and mints one receipt per payment |
+| Attestation waiter | Proof routes resolve the Sepolia chain key at runtime via `get_supported_chains` and optionally long-poll with `waitUntilHeightAttested` (`waitMs`, capped at 25s) before attempting proof retrieval |
 | Proof service hosts | `https://proof-gen-api.cc3-testnet.creditcoin.network`, with `https://prover.cc3-testnet.creditcoin.network` as fallback |
 | Attestation progress | `chainInfo.PrecompileChainInfoProvider` reads the chain-info precompile at `0x0000000000000000000000000000000000000FD3` |
 | On-chain verification | [`VouchCore.recordPurchase`](contracts/src/VouchCore.sol) calls `verifyAndEmit` on `0x0000000000000000000000000000000000000FD2` |

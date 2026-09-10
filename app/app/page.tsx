@@ -39,6 +39,19 @@ export default function Landing() {
             <div className="role-footer"><span>Open merchant console</span><span aria-hidden="true">↗</span></div>
           </Link>
         </div>
+        <div className="demo-card">
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ fontWeight: 640, fontSize: 16 }}>Watch the demo</span>
+          </div>
+          {/* Swap in the real recording anytime: replace public/demo.mp4, keep the filename. */}
+          <video className="demo-video" controls preload="metadata" playsInline>
+            <source src="/demo.mp4" type="video/mp4" />
+            Your browser can&apos;t play this video. You can still explore the app below.
+          </video>
+          <div className="tiny muted" style={{ marginTop: 10 }}>
+            Pay on Sepolia → prove with Attestcoin → earn stars and cashback on Creditcoin.
+          </div>
+        </div>
         <div className="tiny muted landing-note">
           Payments on Sepolia · Verified by Attestcoin · Rewards on Creditcoin
           <div style={{ marginTop: 6 }}>Demo uses test tokens with no monetary value.</div>

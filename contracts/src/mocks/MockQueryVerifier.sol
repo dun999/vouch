@@ -26,6 +26,17 @@ contract MockQueryVerifier {
         return result;
     }
 
+    function verifyAndEmit(
+        uint64,
+        uint64[] calldata,
+        bytes[] calldata,
+        INativeQueryVerifier.MerkleProof[] calldata,
+        INativeQueryVerifier.ContinuityProof calldata
+    ) external view returns (bool) {
+        require(!shouldRevert, "mock: proof rejected");
+        return result;
+    }
+
     function verify(
         uint64,
         uint64,

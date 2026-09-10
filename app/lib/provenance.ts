@@ -55,16 +55,21 @@ async function sepoliaTxAt(height: bigint, index: bigint): Promise<Hash | undefi
 }
 
 async function loadVerifications(user: Address): Promise<Map<string, Provenance>> {
+  // NOTE: do NOT filter by `args: { user }` server-side. The Blockscout eth-rpc mirror
+  // (CC_LOGS_RPC) mis-handles null wildcards in the middle of the topics array, so a query
+  // for topics [sig, null, userTopic, null] incorrectly returns []. Fetch unfiltered and
+  // filter client-side instead — fine at hackathon scale, like the rest of the console.
   const logs = await ccLogs.getLogs({
     address: addresses.VouchCore,
     event: PURCHASE_VERIFIED,
-    args: { user },
     fromBlock: 0n,
     toBlock: "latest",
   });
 
+  const want = user.toLowerCase();
   const out = new Map<string, Provenance>();
   for (const log of logs) {
+    if (log.args.user?.toLowerCase() !== want) continue;
     const id = log.args.receiptId?.toString();
     if (!id || !log.transactionHash) continue;
     out.set(id, { verifyTxHash: log.transactionHash, verifyBlock: log.blockNumber ?? undefined });

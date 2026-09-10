@@ -860,4 +860,116 @@ contract VouchCoreTest is Test {
         assertEq(d.purchases, 2);
         assertEq(d.spend, 5 * USD);
     }
+
+    // ------------------------------------------------------------ batch claims
+
+    function _batchArgs(address who, uint256[] memory amounts, uint64[] memory heights)
+        internal
+        view
+        returns (
+            bytes[] memory txs,
+            INativeQueryVerifier.MerkleProof[] memory mps,
+            uint256[] memory itemIds,
+            uint256[][] memory qids
+        )
+    {
+        uint256 n = amounts.length;
+        txs = new bytes[](n);
+        mps = new INativeQueryVerifier.MerkleProof[](n);
+        itemIds = new uint256[](n);
+        qids = new uint256[][](n);
+        for (uint256 i = 0; i < n; i++) {
+            txs[i] = TxFixture.usdcPayment(token, who, payout, amounts[i]);
+            mps[i] = mp;
+        }
+    }
+
+    function test_batchClaimAwardsBothReceipts() public {
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 10 * USD;
+        amounts[1] = 5 * USD;
+        uint64[] memory heights = new uint64[](2);
+        heights[0] = 100;
+        heights[1] = 101;
+
+        (bytes[] memory txs, INativeQueryVerifier.MerkleProof[] memory mps, uint256[] memory itemIds, uint256[][] memory qids) =
+            _batchArgs(user, amounts, heights);
+
+        verifier.setTxIndex(0);
+        vm.prank(user);
+        uint256[] memory ids = core.recordPurchasesBatch(heights, txs, mps, cp, itemIds, qids);
+
+        assertEq(ids.length, 2);
+        assertEq(ids[0], 1);
+        assertEq(ids[1], 2);
+        assertEq(core.profileOf(user).stars, 150, "$15 x 10 stars in one call");
+        assertEq(core.profileOf(user).purchaseCount, 2);
+        assertEq(core.receiptsOf(user).length, 2);
+        assertTrue(pass.hasPass(user));
+    }
+
+    function test_batchSharesReplayProtectionWithSingles() public {
+        _claim(user, 10 * USD, 100, 0, _noQuests());
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 10 * USD;
+        uint64[] memory heights = new uint64[](1);
+        heights[0] = 100; // same (height, txIndex) as the single claim above
+        (bytes[] memory txs, INativeQueryVerifier.MerkleProof[] memory mps, uint256[] memory itemIds, uint256[][] memory qids) =
+            _batchArgs(user, amounts, heights);
+
+        verifier.setTxIndex(0);
+        bytes32 pid = core.purchaseIdFor(100, 0);
+        vm.expectRevert(
+            abi.encodeWithSelector(VouchCore.PurchaseAlreadyClaimed.selector, pid)
+        );
+        vm.prank(user);
+        core.recordPurchasesBatch(heights, txs, mps, cp, itemIds, qids);
+    }
+
+    function test_batchRevertsOnLengthMismatch() public {
+        uint64[] memory heights = new uint64[](1);
+        heights[0] = 100;
+        bytes[] memory txs = new bytes[](2);
+        txs[0] = TxFixture.usdcPayment(token, user, payout, 1 * USD);
+        txs[1] = TxFixture.usdcPayment(token, user, payout, 1 * USD);
+        INativeQueryVerifier.MerkleProof[] memory mps = new INativeQueryVerifier.MerkleProof[](1);
+        mps[0] = mp;
+
+        vm.prank(user);
+        vm.expectRevert(VouchCore.BatchLengthMismatch.selector);
+        core.recordPurchasesBatch(heights, txs, mps, cp, new uint256[](1), new uint256[][](1));
+    }
+
+    function test_batchRevertsWhenTooLarge() public {
+        uint256 n = 11;
+        uint64[] memory heights = new uint64[](n);
+        bytes[] memory txs = new bytes[](n);
+        INativeQueryVerifier.MerkleProof[] memory mps = new INativeQueryVerifier.MerkleProof[](n);
+        for (uint256 i = 0; i < n; i++) {
+            heights[i] = uint64(100 + i);
+            txs[i] = TxFixture.usdcPayment(token, user, payout, 1 * USD);
+            mps[i] = mp;
+        }
+
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(VouchCore.BatchTooLarge.selector, 11, 10));
+        core.recordPurchasesBatch(heights, txs, mps, cp, new uint256[](n), new uint256[][](n));
+    }
+
+    function test_batchRevertsWhenVerifierRejects() public {
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 1 * USD;
+        amounts[1] = 1 * USD;
+        uint64[] memory heights = new uint64[](2);
+        heights[0] = 100;
+        heights[1] = 101;
+        (bytes[] memory txs, INativeQueryVerifier.MerkleProof[] memory mps, uint256[] memory itemIds, uint256[][] memory qids) =
+            _batchArgs(user, amounts, heights);
+
+        verifier.setResult(false);
+        vm.prank(user);
+        vm.expectRevert(VouchCore.NotVerified.selector);
+        core.recordPurchasesBatch(heights, txs, mps, cp, itemIds, qids);
+    }
 }

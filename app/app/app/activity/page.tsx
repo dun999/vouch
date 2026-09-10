@@ -9,6 +9,7 @@ import { useReceipts, useCommerces, useAllItems } from "@/lib/useVouch";
 import { useProvenance } from "@/lib/provenance";
 import { loadPending, type Pending } from "@/lib/pending";
 import { PendingRow } from "@/components/PendingRow";
+import { ClaimAllBar } from "@/components/ClaimAllBar";
 import { ReceiptModal } from "@/components/ReceiptModal";
 
 export default function ActivityPage() {
@@ -63,6 +64,15 @@ export default function ActivityPage() {
             </span>
           </div>
           <div className="grid" style={{ gap: 12, marginBottom: 34 }}>
+            {pending.length >= 2 && (
+              <ClaimAllBar
+                pendings={pending}
+                onDone={() => {
+                  refresh();
+                  refetch();
+                }}
+              />
+            )}
             {pending.map((p) => (
               <PendingRow
                 key={p.txHash}

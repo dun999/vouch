@@ -63,6 +63,10 @@ contract VouchCore is Ownable {
         uint256 spend;
     }
 
+    /// @notice Maximum purchases per `recordPurchasesBatch` call. Matches the Attestcoin
+    ///         `getBatchProof` limit so one prover call always feeds one claim call.
+    uint256 public constant MAX_BATCH = 10;
+
     /// @dev keccak256("Transfer(address,address,uint256)")
     bytes32 internal constant TRANSFER_SIG = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
 
@@ -132,6 +136,8 @@ contract VouchCore is Ownable {
     error PurchaseAlreadyClaimed(bytes32 purchaseId);
     error ZeroValuePurchase();
     error AlreadyCheckedInToday();
+    error BatchLengthMismatch();
+    error BatchTooLarge(uint256 size, uint256 max);
 
     constructor(uint64 chainKey, address registry_, address pass_, address verifier_, address initialOwner)
         Ownable(initialOwner)
@@ -191,6 +197,76 @@ contract VouchCore is Ownable {
         usedPurchase[purchaseId] = true;
 
         receiptId = _applyPurchase(
+            Sale({user: c.from, payout: payout, commerceId: commerceId, itemId: itemId, amount: amount}),
+            height,
+            txIndex,
+            questIds
+        );
+    }
+
+    /// @notice Prove several Sepolia USDC payments in one call with a single shared continuity
+    ///         proof (Attestcoin `getBatchProof`). Every entry goes through the same checks as
+    ///         `recordPurchase`; the whole call reverts if any entry is invalid, so a batch is
+    ///         all-or-nothing. Quests stay Sepolia-scoped: same `questIds` semantics per purchase.
+    /// @dev Arrays must be parallel and non-empty, with at most `MAX_BATCH` entries.
+    function recordPurchasesBatch(
+        uint64[] calldata heights,
+        bytes[] calldata encodedTxs,
+        INativeQueryVerifier.MerkleProof[] calldata merkleProofs,
+        INativeQueryVerifier.ContinuityProof calldata sharedContinuityProof,
+        uint256[] calldata itemIds,
+        uint256[][] calldata questIdsPerPurchase
+    ) external returns (uint256[] memory receiptIds) {
+        if (paymentToken == address(0)) revert PaymentTokenNotSet();
+
+        uint256 n = heights.length;
+        if (
+            n == 0 || n != encodedTxs.length || n != merkleProofs.length || n != itemIds.length
+                || n != questIdsPerPurchase.length
+        ) revert BatchLengthMismatch();
+        if (n > MAX_BATCH) revert BatchTooLarge(n, MAX_BATCH);
+
+        // 1. One shared continuity proof covers every transaction in the batch.
+        if (!VERIFIER.verifyAndEmit(CHAIN_KEY, heights, encodedTxs, merkleProofs, sharedContinuityProof)) {
+            revert NotVerified();
+        }
+
+        // 2. Same per-payment validation as `recordPurchase`, applied entry by entry.
+        receiptIds = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            receiptIds[i] = _recordOnePurchase(
+                encodedTxs[i],
+                merkleProofs[i],
+                heights[i],
+                itemIds[i],
+                questIdsPerPurchase[i]
+            );
+        }
+    }
+
+    /// @dev One entry of `recordPurchasesBatch`. Split out so the batch loop stays shallow.
+    function _recordOnePurchase(
+        bytes calldata encodedTx,
+        INativeQueryVerifier.MerkleProof calldata merkleProof,
+        uint64 height,
+        uint256 itemId,
+        uint256[] calldata questIds
+    ) private returns (uint256) {
+        EvmV1Decoder.ReceiptFields memory r = EvmV1Decoder.decodeReceiptFields(encodedTx);
+        if (r.receiptStatus != 1) revert SourceTxFailed();
+
+        EvmV1Decoder.CommonTxFields memory c = EvmV1Decoder.decodeCommonTxFields(encodedTx);
+        if (c.toIsNull || c.to != paymentToken) revert NotAPaymentToTheToken(c.to);
+        if (c.from != msg.sender) revert PayerMismatch(c.from, msg.sender);
+
+        (uint256 commerceId, address payout, uint256 amount) = _findMerchantTransfer(r, c.from);
+
+        uint64 txIndex = VERIFIER.calculateTxIndex(merkleProof);
+        bytes32 purchaseId = keccak256(abi.encode(CHAIN_KEY, height, txIndex));
+        if (usedPurchase[purchaseId]) revert PurchaseAlreadyClaimed(purchaseId);
+        usedPurchase[purchaseId] = true;
+
+        return _applyPurchase(
             Sale({user: c.from, payout: payout, commerceId: commerceId, itemId: itemId, amount: amount}),
             height,
             txIndex,

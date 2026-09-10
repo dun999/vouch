@@ -34,7 +34,9 @@ export function PendingRow({ p, onDone }: { p: Pending; onDone: () => void }) {
       const r = await fetch("/api/proof", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ txHash: p.txHash }),
+        // Long-poll the prover's attestation cache so one request can ride out a short
+        // attestation gap instead of this row polling for it.
+        body: JSON.stringify({ txHash: p.txHash, waitMs: 15000 }),
       });
       const d = await r.json();
       if (d.status === "ready") setState({ status: "ready", proof: d.proof });
