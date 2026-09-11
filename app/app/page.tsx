@@ -11,10 +11,12 @@ export default function Landing() {
           <BrandLogo />
           <span className="pill" style={{ marginLeft: "auto" }}>Testnet preview</span>
         </div>
-        <h1>Every purchase.<br /><span>A little more rewarding.</span></h1>
+        <p className="eyebrow">Pay on Sepolia · Earn on Creditcoin</p>
+        <h1>Every purchase, <em>a little more rewarding.</em></h1>
         <p className="sub">
           Discover local favorites, complete quests, and earn cashback.
-          One loyalty pass carries your progress across every storefront.
+          One loyalty pass carries your progress across every storefront —
+          every stamp proven by Attestcoin, not promised by a database.
         </p>
         {!isDeployed && (
           <div className="banner warn" style={{ marginBottom: 24 }}>

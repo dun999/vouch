@@ -16,6 +16,11 @@
 
   --accent-ink: #FFFEFA;
   --gold: #E8BB57;
+  --star: #B8860B;
+  --ctc: #2F7D46;
+  --ink: #23211D;
+  --ink-soft: #4A4640;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
   --sidebar-w: 248px;
   --sidebar-collapsed: 72px;
   /* One number drives every horizontal gutter, so the topbar and the page body stay aligned. */
@@ -126,8 +131,14 @@ a { color: inherit; text-decoration: none; }
 .content { padding: 32px 0 72px; }
 
 .page-h { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
-h1 { font-size: 32px; margin: 0; font-weight: 700; letter-spacing: -.035em; }
-h2 { font-size: 18px; margin: 0 0 14px; font-weight: 640; letter-spacing: -.01em; }
+h1, h2, .role-title, .ps-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+h1 { font-size: 32px; margin: 0; letter-spacing: -0.02em; }
+h2 { font-size: 21px; margin: 0 0 14px; letter-spacing: -0.01em; }
 h3 { font-size: 14px; margin: 0 0 8px; font-weight: 620; }
 .sub { color: var(--muted); font-size: 15px; margin: 6px 0 28px; max-width: 68ch; }
 .section-h { display: flex; align-items: baseline; gap: 12px; margin: 36px 0 16px; }
@@ -156,15 +167,25 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 620; }
 .label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--dim); font-weight: 650; }
 
 button {
-  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 9px;
-  padding: 10px 18px; font-weight: 620; cursor: pointer; font-size: 14.5px; font-family: inherit;
+  background: var(--ink); color: var(--panel); border: 0; border-radius: 999px;
+  padding: 11px 24px; font-weight: 550; cursor: pointer; font-size: 14.5px; font-family: inherit;
+  letter-spacing: .005em;
 }
-button:hover:not(:disabled) { filter: brightness(.95); }
+button:hover:not(:disabled) { filter: brightness(.93); }
 button:disabled { opacity: .4; cursor: not-allowed; }
 button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line-2); }
 button.ghost:hover:not(:disabled) { background: var(--hover); filter: none; }
-button.sm { padding: 7px 13px; font-size: 13.5px; border-radius: 8px; }
-button.lg { padding: 13px 22px; font-size: 15.5px; }
+button.sm { padding: 7px 16px; font-size: 13.5px; border-radius: 999px; }
+button.lg { padding: 14px 26px; font-size: 15.5px; }
+/* Destructive actions keep a warm terracotta voice so ink stays reserved for primary moves. */
+button.danger { background: var(--accent); color: var(--accent-ink); }
+button.danger:hover:not(:disabled) { filter: brightness(.95); }
+/* The pre-redesign button: rounded rect in terracotta. Kept for actions users already know. */
+button.classic {
+  background: var(--accent); color: var(--accent-ink);
+  border-radius: 9px; padding: 10px 18px; font-weight: 620; letter-spacing: 0;
+}
+button.classic:hover:not(:disabled) { filter: brightness(.95); }
 
 input, select, textarea {
   width: 100%; background: var(--bg); border: 1px solid var(--line-2); color: var(--text);
@@ -260,6 +281,87 @@ tbody tr:hover { background: var(--panel-2); }
 }
 .q-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
 
+/* ---------------------------------------------------------------- popover */
+.pop-wrap { position: relative; }
+.pop-overlay { position: fixed; inset: 0; z-index: 55; cursor: default; }
+.checkin-pop {
+  position: absolute; right: 0; top: calc(100% + 10px); width: 330px;
+  max-width: calc(100vw - 32px); z-index: 56;
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(37, 42, 36, .18); padding: 18px;
+}
+.checkin-btn { display: inline-flex; align-items: center; gap: 7px; }
+.checkin-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 12px; }
+.checkin-day {
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 2px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------- dark mode (monochrome) */
+[data-theme="dark"] {
+  --bg: #121211;
+  --panel: #1B1B19;
+  --panel-2: #232320;
+  --hover: #2B2B27;
+  --line: #2C2C29;
+  --line-2: #44443D;
+  --text: #ECECE5;
+  --muted: #A6A69D;
+  --dim: #8E8E86;
+  --accent: #EDEDE6;
+  --accent-dim: #262622;
+  --accent-ink: #141412;
+  --green: #DCDCD4;
+  --amber: #A9A9A1;
+  --red: #F2F0EA;
+  --star: #E8BB57;
+  --ctc: #6FCF8B;
+  color-scheme: dark;
+}
+/* Primary buttons are near-black on cream; invert them so they survive the theme flip. */
+[data-theme="dark"] button:not(.ghost):not(.classic):not(.q-head):not(.menu-row):not(.pf):not(.sb-collapse):not(.x):not(.rc-copy) {
+  background: #EDEDE6;
+  color: #141412;
+}
+/* Status hues collapse to luminance: ok brightest, wait mid grey, err inverted. */
+[data-theme="dark"] .pill.ok,
+[data-theme="dark"] .pill.wait,
+[data-theme="dark"] .pill.acc { background: var(--panel-2); }
+[data-theme="dark"] .pill.ok { color: var(--green); border-color: #4C4C45; }
+[data-theme="dark"] .pill.wait { color: var(--amber); border-color: #4C4C45; }
+[data-theme="dark"] .pill.acc { color: var(--accent); border-color: var(--line-2); }
+[data-theme="dark"] .pill.err,
+[data-theme="dark"] .banner.err { color: #141412; background: #EDEDE6; border-color: #EDEDE6; }
+[data-theme="dark"] .banner.warn { color: var(--text); background: var(--panel-2); border-color: var(--line-2); }
+[data-theme="dark"] .topbar { background: rgba(18, 18, 17, .92); }
+[data-theme="dark"] .bar > i { background: var(--green); }
+[data-theme="dark"] .q-ico,
+[data-theme="dark"] .q-ico.comm,
+[data-theme="dark"] .role-ico,
+[data-theme="dark"] .benefit-ico,
+[data-theme="dark"] .cash-gift { background: #262622; color: #EDEDE6; }
+[data-theme="dark"] .q-reward-v,
+[data-theme="dark"] .rung.reached .rung-pct,
+[data-theme="dark"] .rung.on .rung-pct { color: var(--green); }
+[data-theme="dark"] .menu-stock.low,
+[data-theme="dark"] .sold-low { color: var(--amber); }
+[data-theme="dark"] .sb-item.on { background: #262622; color: #EDEDE6; }
+[data-theme="dark"] .ps-seal-ring { stroke: #EDEDE6; stroke-opacity: .35; }
+[data-theme="dark"] .ps-seal-fill { fill: #EDEDE6; fill-opacity: .14; }
+[data-theme="dark"] .ps-seal-tick { stroke: #141412; }
+[data-theme="dark"] .ps-step.done .ps-mark { background: #EDEDE6; border-color: #EDEDE6; color: #141412; }
+[data-theme="dark"] .ps-eta,
+[data-theme="dark"] .ps-step.active .ps-mark { border-color: var(--line-2); background: var(--panel-2); }
+[data-theme="dark"] .ps-eta { color: var(--amber); }
+[data-theme="dark"] .ps-spin { border-color: var(--line-2); border-top-color: var(--text); }
+/* The raster lockup is dark ink, so invert it rather than shipping a second asset. */
+[data-theme="dark"] .brand-logo img { filter: invert(1); }
+[data-theme="dark"] .landing {
+  background:
+    radial-gradient(60% 40% at 82% 8%, rgba(237, 237, 230, .05), transparent 70%),
+    radial-gradient(50% 36% at 8% 92%, rgba(237, 237, 230, .04), transparent 70%);
+}
+
 /* ---------------------------------------------------------------- modal */
 .overlay {
   position: fixed; inset: 0; background: rgba(37,42,36,.32); backdrop-filter: blur(4px);
@@ -330,7 +432,12 @@ tbody tr:hover { background: var(--panel-2); }
 }
 
 /* ---------------------------------------------------------------- landing */
-.landing { min-height: 100vh; display: grid; place-items: center; padding: 32px; }
+.landing {
+  min-height: 100vh; display: grid; place-items: center; padding: 32px;
+  background:
+    radial-gradient(60% 40% at 82% 8%, rgba(173, 70, 44, .07), transparent 70%),
+    radial-gradient(50% 36% at 8% 92%, rgba(232, 187, 87, .10), transparent 70%);
+}
 .landing-inner { width: 100%; max-width: 900px; }
 .role {
   display: block; text-align: left; width: 100%; background: var(--panel);
@@ -360,14 +467,31 @@ tbody tr:hover { background: var(--panel-2); }
   outline: 2px solid var(--accent); outline-offset: 4px;
 }
 .stat, .q-reward-v, .menu-price, td { font-variant-numeric: tabular-nums; }
+/* Star counts: golden in both themes, with a star glyph beside the number. */
+.stars-earn {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--star); font-weight: 650; white-space: nowrap;
+}
+/* Cashback counts: same frameless treatment and size as stars, same green in both themes. */
+.ctc-earn {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--ctc); font-weight: 650; white-space: nowrap;
+}
 .benefit-ico, .role-ico { color: var(--accent); }
 .landing { padding: 64px 32px; }
-.landing-brand { margin-bottom: 64px; }
-.landing h1 { font-size: clamp(36px, 5.5vw, 64px); line-height: 1.06; max-width: 720px; letter-spacing: -.045em; }
-.landing h1 span { color: var(--accent); }
-.landing .sub { font-size: 17px; max-width: 570px; margin: 22px 0 40px; }
-.landing .role { height: 100%; padding: 28px; }
-.role-title { font-size: 20px; font-weight: 650; margin-bottom: 8px; }
+.landing-brand { margin-bottom: 56px; }
+.landing .eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent); margin: 0 0 20px;
+}
+.landing .eyebrow::before { content: ""; width: 22px; height: 1.5px; background: var(--accent); }
+.landing h1 { font-size: clamp(42px, 6.4vw, 76px); line-height: 1.04; max-width: 16ch; letter-spacing: -0.01em; }
+.landing h1 em { font-style: italic; color: var(--accent); }
+.landing .sub { font-size: 18px; max-width: 54ch; margin: 24px 0 36px; color: var(--ink-soft); }
+.landing .role { height: 100%; padding: 30px; border-radius: 18px; }
+.landing .demo-card { border-radius: 18px; padding: 26px; margin-top: 22px; }
+.role-title { font-size: 21px; font-weight: 500; margin-bottom: 8px; }
 .role-footer { display: flex; align-items: center; justify-content: space-between; color: var(--accent); margin-top: 24px; padding-top: 16px; border-top: 1px dashed var(--line-2); font-size: 14px; font-weight: 600; }
 /* Landing demo video: direct-play card between the role grid and the footnote. */
 .demo-card {
@@ -533,8 +657,16 @@ tbody tr.clickable:focus-visible { outline: 2px solid var(--accent); outline-off
 
 /* The balance and its breakdown, side by side, so one card can hold the full page width. */
 .cash-card { display: grid; gap: 32px; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
+.cash-card.cash-single { grid-template-columns: 1fr; padding: 30px; }
 .cash-main { display: flex; flex-direction: column; align-items: flex-start; }
 .cash-total { margin: 6px 0 20px; }
+.cash-gift-row { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
+.cash-gift-row .cash-total { margin: 4px 0 0; font-size: 44px; }
+.cash-gift {
+  width: 64px; height: 64px; flex: 0 0 64px; border-radius: 17px;
+  background: var(--accent-dim); color: var(--accent);
+  display: grid; place-items: center;
+}
 .cash-main > button { width: 100%; }
 .cash-split { border-left: 1px solid var(--line); padding-left: 32px; }
 @media (max-width: 780px) {

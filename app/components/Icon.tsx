@@ -117,6 +117,43 @@ const PATHS: Record<string, ReactNode> = {
       <circle cx="16.2" cy="7.4" r="4.4" />
     </>
   ),
+  // A gift box. Rewards ready to claim.
+  gift: (
+    <>
+      <rect x="3" y="8" width="18" height="4" rx="1" />
+      <path d="M12 8v13" />
+      <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+      <path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5" />
+    </>
+  ),
+  // A wall calendar. The daily check-in streak.
+  calendar: (
+    <>
+      <rect x="3.4" y="5" width="17.2" height="15.6" rx="2.2" />
+      <path d="M3.4 9.6h17.2" />
+      <path d="M8 2.8v3.6M16 2.8v3.6" />
+      <path d="M7.4 13.4h2M11 13.4h2M15 13.4h2M7.4 16.8h2M11 16.8h2" />
+    </>
+  ),
+  // A five-pointed star. Star counts on the Starboard.
+  star: (
+    <>
+      <path d="M11.5 2.3l2.3 4.7 5.2.8-3.7 3.6.9 5.1-4.7-2.4-4.7 2.4.9-5.1-3.7-3.6 5.2-.8Z" />
+    </>
+  ),
+  // A crescent moon. Switch to dark mode.
+  moon: (
+    <>
+      <path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a8.6 8.6 0 1 0 10.6 10.6Z" />
+    </>
+  ),
+  // A sun. Switch back to light mode.
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.8 1.8M17 17l1.8 1.8M18.8 5.2 17 7M7 17l-1.8 1.8" />
+    </>
+  ),
 
   // ---- menu-item categories, matched by keyword so a listed item looks like itself ----
   coffee: (

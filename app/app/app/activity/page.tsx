@@ -11,6 +11,7 @@ import { loadPending, type Pending } from "@/lib/pending";
 import { PendingRow } from "@/components/PendingRow";
 import { ClaimAllBar } from "@/components/ClaimAllBar";
 import { ReceiptModal } from "@/components/ReceiptModal";
+import { Icon } from "@/components/Icon";
 
 export default function ActivityPage() {
   const { address, isConnected } = useAccount();
@@ -139,10 +140,12 @@ export default function ActivityPage() {
                     </td>
                     <td style={{ fontWeight: 570 }}>{usd(v.amount)}</td>
                     <td>
-                      <span className="pill acc">+{v.starsEarned.toString()} stars</span>
+                      <span className="stars-earn">
+                        <Icon name="star" size={14} /> +{v.starsEarned.toString()}
+                      </span>
                       {cashback > 0n && (
-                        <span className="pill ok" style={{ marginLeft: 5 }}>
-                          {ctc(cashback)} CTC
+                        <span className="ctc-earn" style={{ marginLeft: 10 }}>
+                          <Icon name="coins" size={14} /> {ctc(cashback)} CTC
                         </span>
                       )}
                     </td>

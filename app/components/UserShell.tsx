@@ -22,6 +22,7 @@ export function UserShell({ children }: { children: React.ReactNode }) {
     {
       items: [
         { href: "/app", label: "Quests", icon: <Icon name="ticket" /> },
+        { href: "/starboard", label: "Starboard", icon: <Icon name="star" /> },
         { href: "/app/activity", label: "Activity", icon: <Icon name="receipt" /> },
         { href: "/app/benefits", label: "Benefits", icon: <Icon name="pass" /> },
       ],

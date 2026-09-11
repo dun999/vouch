@@ -8,6 +8,10 @@ import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
 import { creditcoinTestnet } from "@/lib/chains";
 import { shortAddr } from "@/lib/format";
 import { useAutoChain } from "@/lib/useChain";
+import { CheckInPopover } from "./CheckInPopover";
+import { Icon } from "./Icon";
+
+const THEME_KEY = "vouch:theme";
 
 export type NavItem = { href: string; label: string; icon: React.ReactNode; badge?: string | number };
 export type NavSection = { title?: string; items: NavItem[] };
@@ -112,11 +116,42 @@ function TopBar() {
 
   const wrongChain = isConnected && !onCreditcoin;
 
+  const [theme, setTheme] = useState("light");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      const initial = saved === "dark" || document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+      setTheme(initial);
+      document.documentElement.dataset.theme = initial;
+    } catch {
+      /* private mode: stay light */
+    }
+  }, []);
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    try {
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem(THEME_KEY, next);
+    } catch {
+      /* non-fatal */
+    }
+  };
+
   return (
     <div className="topbar">
       <div className="container">
         <span className="tiny dim">Creditcoin CC3 · Attestcoin · Ethereum Sepolia</span>
         <div className="spacer" />
+        <button
+          className="ghost sm"
+          style={{ padding: "7px 10px" }}
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
+        </button>
         {wrongChain && (
           <span className="pill wait">
             <i className="dot" /> Switching to Creditcoin…
@@ -124,6 +159,7 @@ function TopBar() {
         )}
         {isConnected ? (
           <>
+            <CheckInPopover />
             <span className="pill mono">{shortAddr(address)}</span>
             <button className="ghost sm" onClick={() => disconnect()}>
               Disconnect
