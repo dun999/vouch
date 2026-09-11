@@ -2,6 +2,10 @@
   <img src="app/public/brand/vouch-logo-v1.png" alt="Vouch" width="380">
 </p>
 
+<p align="center">
+  <a href="docs/VOUCH_WHITEPAPER_v1.1.pdf"><strong>Read Whitepaper PDF</strong></a>
+</p>
+
 # Vouch
 
 **Turn verified purchases into a loyalty pass that works across merchants.**
