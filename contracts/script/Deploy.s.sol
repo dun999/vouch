@@ -11,6 +11,7 @@ import {MilestoneManager} from "../src/MilestoneManager.sol";
 import {Catalog} from "../src/Catalog.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {AppCashback} from "../src/AppCashback.sol";
+import {StarRedeem} from "../src/StarRedeem.sol";
 import {NativeQueryVerifierLib} from "../src/vendor/INativeQueryVerifier.sol";
 
 /// @notice Deploys the Vouch stack to Creditcoin CC3 testnet (chainId 102031).
@@ -43,6 +44,9 @@ contract Deploy is Script {
         Catalog catalog = new Catalog(address(registry), address(core));
         PriceOracle oracle = new PriceOracle(ETHEREUM_CHAIN_KEY, address(0), deployer);
         AppCashback appCashback = new AppCashback(address(core), address(oracle), deployer);
+        // Star redemption needs no VouchCore wiring: it reads starsOf and keeps its own
+        // redeemed ledger. Fund it with CTC after deploy (StarRedeem.fund{value:...}).
+        StarRedeem starRedeem = new StarRedeem(address(core), deployer);
 
         pass.setMinter(address(core));
         core.setPaymentToken(paymentToken, 6);
@@ -64,6 +68,7 @@ contract Deploy is Script {
         console.log("Catalog          ", address(catalog));
         console.log("PriceOracle      ", address(oracle));
         console.log("AppCashback      ", address(appCashback));
+        console.log("StarRedeem       ", address(starRedeem));
         console.log("PaymentToken     ", paymentToken);
     }
 }

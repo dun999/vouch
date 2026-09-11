@@ -123,6 +123,7 @@ The frontend uses **Next.js 15, React 19, TypeScript, wagmi, viem, and TanStack 
 | `MilestoneManager` | Community targets, participation, budgets, and claims |
 | `PriceOracle` | Proven Uniswap V2 `Sync` reserves from Ethereum mainnet (WCTC/USDT) |
 | `AppCashback` | Level-based percentage rewards from the app treasury |
+| `StarRedeem` | Surplus stars above the Level 5 line swapped for CTC (100 stars = 10 CTC) |
 | `MockUSDC` | Six-decimal Sepolia demo token with an open faucet |
 
 ```text
@@ -168,6 +169,7 @@ NEXT_PUBLIC_CATALOG=0x1eb050Db90c64Ca67C2F424414b7C193E7040Bb9
 NEXT_PUBLIC_PRICE_ORACLE=0xE705Ee700Cd619e98751ca1D072B87931Ce5e81D
 NEXT_PUBLIC_APP_CASHBACK=0x9E7063023e65CD1c593C7d0397C3F7692Af92700
 NEXT_PUBLIC_PAYMENT_TOKEN=0xBcb107E49F78C9dBa122eA31137B6ED903F65AeC
+NEXT_PUBLIC_STAR_REDEEM=0xfdb448ccf3eb859721192b108e344c386c22501f
 
 # Optional RPC overrides; these match the code's defaults.
 NEXT_PUBLIC_CC_RPC=https://rpc.cc3-testnet.creditcoin.network
@@ -222,11 +224,23 @@ APP_CASHBACK=0x… pnpm oracle:mainnet --gas-estimate-multiplier 300
 PRICE_ORACLE=<new oracle> pnpm sync:price
 ```
 
+`StarRedeem` deploys standalone against an existing `VouchCore` — no redeploy or rewiring needed.
+From `contracts/`, with `VOUCH_CORE` set to the live core address:
+
+```bash
+forge create src/StarRedeem.sol:StarRedeem --rpc-url creditcoin --private-key "$PRIVATE_KEY" \
+  --broadcast --constructor-args "$VOUCH_CORE" "$DEPLOYER" --gas-estimate-multiplier 300
+```
+
+Then fund its CTC treasury (e.g. `cast send <StarRedeem> --value 100ether ...` or `fund()`), and
+set `NEXT_PUBLIC_STAR_REDEEM` to the new address. Until that variable is set, `/redeem` shows
+balances with claiming disabled.
+
 The repository's deployment notes record low gas estimates and Foundry receipt-polling issues on CC3. Keep the configured London EVM target and verify deployment and wiring results on-chain if the script reports polling errors.
 
 ## Validation and current limits
 
-**78 tests pass across four Foundry suites** in local verification. They cover payment validation, replay rejection, progression, pass rendering, quests, catalog stock, community campaigns, oracle behavior, and cashback accounting.
+**92 tests pass across five Foundry suites** in local verification. They cover payment validation, replay rejection, progression, pass rendering, quests, catalog stock, community campaigns, oracle behavior, cashback accounting, batch claims, and star redemption.
 
 The coverage has two distinct layers:
 

@@ -13,8 +13,12 @@ export const addresses = {
   AppCashback: (process.env.NEXT_PUBLIC_APP_CASHBACK ?? "") as Address,
   /// MockUSDC on Ethereum Sepolia, 6 decimals.
   PaymentToken: (process.env.NEXT_PUBLIC_PAYMENT_TOKEN ?? "") as Address,
+  /// StarRedeem on Creditcoin. Optional: the redeem page explains itself when unset.
+  StarRedeem: (process.env.NEXT_PUBLIC_STAR_REDEEM ?? "") as Address,
 };
 
 export const USDC_DECIMALS = 6;
 
-export const isDeployed = Object.values(addresses).every((a) => a && a.length === 42);
+const { StarRedeem: _starRedeem, ...coreAddresses } = addresses;
+export const isDeployed = Object.values(coreAddresses).every((a) => a && a.length === 42);
+export const isRedeemDeployed = isDeployed && addresses.StarRedeem.length === 42;

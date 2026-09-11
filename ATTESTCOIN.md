@@ -106,6 +106,7 @@ deployment is 7 days.
 | Catalog | `0x1eb050Db90c64Ca67C2F424414b7C193E7040Bb9` |
 | PriceOracle | `0xE705Ee700Cd619e98751ca1D072B87931Ce5e81D` |
 | AppCashback | `0x9E7063023e65CD1c593C7d0397C3F7692Af92700` |
+| StarRedeem | `0xfdb448ccf3eb859721192b108e344c386c22501f` (floor 700 stars, 0.1 CTC/star, 2000 CTC treasury) |
 | PaymentToken (Sepolia MockUSDC) | `0xBcb107E49F78C9dBa122eA31137B6ED903F65AeC` |
 
 `VouchCore.CHAIN_KEY` is `1` (Sepolia). `PriceOracle.CHAIN_KEY` is `3` (Ethereum). Both bind
