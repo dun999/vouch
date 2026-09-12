@@ -110,7 +110,9 @@ Default purchase rewards are **10 stars per whole demo dollar**, calculated prop
 
 Quest eligibility and app cashback use the level held **before** the purchase. A purchase that unlocks level 2 receives its app-cashback rate only on subsequent purchases.
 
-Merchant quest rewards, community campaigns, and app cashback have separate accounting. Rewards are credited before users withdraw CTC. App cashback requires a fresh oracle rate and available treasury funds; insufficient funds can produce a partial credit or none.
+Merchant quest rewards, community campaigns, and app cashback have separate accounting. Rewards are credited before users withdraw CTC. App cashback is `rate(level) × verified spend × CTC-per-USD`: the level rate above times the purchase amount, converted at the oracle's proven CTC price (live rate ≈ 12.998 CTC per $1, so a $5 purchase at level 3 earns 4% × $5 × 12.998 ≈ 2.6 CTC). It requires a fresh oracle rate and available treasury funds; insufficient funds can produce a partial credit or none, and a stale price means no app cashback at all — the receipt and stars are never blocked by pricing.
+
+Attestcoin's role in that number is the price itself. The CTC-per-USD rate is not fetched from an API or trusted from an operator: `PriceOracle` proves a Uniswap V2 `Sync` event from Ethereum mainnet through the same `0x0FD2` verifier that proves payments, checking receipt success, the exact pair, increasing heights, nonzero reserves, and rate bounds on-chain. No valid Sync proof, no rate update — and without a fresh rate, no app cashback. Merchant quest and campaign cashback never touch this path; they pay fixed CTC from merchant funds.
 
 ## Architecture and stack
 
