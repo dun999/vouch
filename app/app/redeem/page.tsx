@@ -139,11 +139,6 @@ export default function RedeemPage() {
               : `Floor ${floor} stays untouched`}
           </div>
         </div>
-        <div className="card">
-          <div className="label">Treasury</div>
-          <div className="stat" style={{ marginTop: 6 }}>{ctc(treasury)} <span style={{ fontSize: 14 }}>CTC</span></div>
-          <div className="tiny dim" style={{ marginTop: 4 }}>Funds every redemption</div>
-        </div>
       </div>
 
       <div className="card">

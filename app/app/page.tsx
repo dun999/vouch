@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { isDeployed } from "@/lib/addresses";
 import { Icon } from "@/components/Icon";
 
@@ -9,7 +10,10 @@ export default function Landing() {
       <div className="landing-inner">
         <div className="row landing-brand">
           <BrandLogo />
-          <span className="pill" style={{ marginLeft: "auto" }}>Testnet preview</span>
+          <span style={{ marginLeft: "auto", display: "inline-flex", gap: 10, alignItems: "center" }}>
+            <ThemeToggle />
+            <span className="pill">Testnet preview</span>
+          </span>
         </div>
         <p className="eyebrow">Pay on Sepolia · Earn on Creditcoin</p>
         <h1>Every purchase, <em>a little more rewarding.</em></h1>
@@ -26,7 +30,7 @@ export default function Landing() {
         <div className="grid g2">
           <Link href="/app" className="role">
             <div className="role-ico"><Icon name="bag" size={24} /></div>
-            <div className="role-title">Make yourself a regular.</div>
+            <div className="role-title">User.</div>
             <div className="muted small">
               Find something you love. Collect stars with verified purchases and unlock more benefits as you go.
             </div>
@@ -34,7 +38,7 @@ export default function Landing() {
           </Link>
           <Link href="/merchant" className="role">
             <div className="role-ico"><Icon name="storefront" size={24} /></div>
-            <div className="role-title">Give them a reason to return.</div>
+            <div className="role-title">Merchant.</div>
             <div className="muted small">
               Set up your menu, create quests, and fund rewards for the customers who keep coming back.
             </div>
