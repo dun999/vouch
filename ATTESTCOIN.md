@@ -1,7 +1,121 @@
-# Attestcoin integration notes
+# Attestcoin in Vouch
 
-Constants and behaviours **verified live against CC3 testnet**, not taken from docs.
-Re-check with the commands below if anything stops working.
+Everything this repo knows about the Attestcoin Protocol: what it is, how Vouch consumes it
+twice over (payments and prices), the SDK surface actually used, the design rules the proof
+format forces, and three integration quirks discovered live that are not in the protocol docs.
+
+Constants and behaviours below were **verified live against CC3 testnet**, not taken from docs.
+Re-check with the commands in [Reproducing the checks](#reproducing-the-checks) if anything stops working.
+
+## What Attestcoin is
+
+Attestcoin is a native attestation protocol built into Creditcoin. Independent attestors confirm
+source-chain blocks and anchor them on Creditcoin, so a contract there can verify — directly,
+with no bridge, oracle operator, or custodian — that a specific transaction happened on another
+chain and what its outcome was. Reading other chains through it is free; apps pay only to send
+actions across chains.
+
+Two precompiles do the work:
+
+| Precompile | Address | Role |
+|---|---|---|
+| Block prover | `0x0000000000000000000000000000000000000FD2` | Verifies a Merkle inclusion proof plus a continuity proof against attested state |
+| Chain info | `0x0000000000000000000000000000000000000FD3` | Reports supported source chains and latest attested heights |
+
+Both return empty `eth_getCode`. That is normal for natives and does not mean they are absent;
+`NativeQueryVerifierLib.hasPrecompile()` special-cases it via chainId.
+
+## The two consumers
+
+Vouch consumes Attestcoin twice, on two different source chains. Payments and prices never mix:
+quest and campaign cashback touch neither path — they pay fixed CTC from merchant funds.
+
+| | Payments | Prices |
+|---|---|---|
+| Source | Ethereum Sepolia (`11155111`), chain key `1` | Ethereum mainnet (`1`), chain key `3` |
+| Consumer | `VouchCore` | `PriceOracle` → `AppCashback` |
+| Proven event | ERC-20 `Transfer` of MockUSDC to a merchant | Uniswap V2 `Sync(uint112,uint112)` of WCTC/USDT |
+| Effect | Receipt, stars, level, quests, campaigns | `ctcPerUsd` rate for level-based cashback |
+
+There is no CTC/USDC Uniswap V2 pool on mainnet or Sepolia, so the price pair is WCTC (old) /
+USDT `0x4a4F4fcA1a9B673f9eB23b7EeFe9dFbafd8D8140` — WCTC is token0 (18 decimals), USDT token1
+(6 decimals), and its price stands in for CTC. Uniswap V3 pools cannot be used: they do not
+emit `Sync`.
+
+## Proof anatomy
+
+Every proof, single or batch, answers *"did this transaction really happen on chain X?"* in two parts:
+
+- **Merkle proof** — the transaction is included in a specific block's transaction tree
+  (`root` + `siblings[]`, each `{hash, isLeft}`).
+- **Continuity proof** — that block belongs to a sequence anchored to an attestation point
+  (`lowerEndpointDigest` + `roots[]`).
+
+The prover API returns them together with the ABI-encoded transaction (`txBytes`), the block
+height, and the transaction index. Batch proofs (`getBatchProof`, max 10 transactions within
+1000 blocks) share **one** continuity proof across all entries — which is exactly why
+`recordPurchasesBatch` verifies once and mints one receipt per payment instead of paying for
+N separate verifications.
+
+## SDK surface used
+
+`@gluwa/usc-sdk@0.18.0` (ethers v6 peer dep). Solidity side is `@gluwa/usc-contracts@0.2.0`,
+vendored into `contracts/src/vendor/`.
+
+| SDK piece | Where | What for |
+|---|---|---|
+| `proofProvider.service.ProofBuilder.getProof` | `POST /api/proof` | One proof per Sepolia payment |
+| `proofProvider.service.ProofBuilder.getBatchProof` | `POST /api/proof/batch` | One shared-continuity proof for up to 10 payments |
+| `proofProvider.service.ProofBuilder.waitUntilHeightAttested` | Both proof routes (`waitMs`, capped 25s) | Long-poll the prover's attestation cache so one request rides out a short gap |
+| `chainInfo.PrecompileChainInfoProvider.getSupportedChains` | `app/app/api/proof/attest.ts` | Resolve the Sepolia chain key at runtime (cached 5 min) |
+| `chainInfo.PrecompileChainInfoProvider.getLatestAttestedHeightAndHash` | Both proof routes | Honest wait-progress only — never gates readiness |
+| Precompile `verifyAndEmit` (single + batch overloads) | `VouchCore.recordPurchase` / `recordPurchasesBatch` | On-chain verification; batch overload takes `heights[]`, `encodedTxs[]`, `merkleProofs[]`, one shared continuity proof |
+| Precompile `calculateTxIndex` | Both record paths | Canonical transaction index from the Merkle proof itself |
+
+## Design rules the proof format forces
+
+1. **Inclusion is not success.** The precompile proves a transaction was *included* in an attested
+   block — a reverted Sepolia transaction still verifies. `VouchCore` independently requires
+   `decodeReceiptFields(encodedTx).receiptStatus == 1`, and `PriceOracle` does the same for swaps.
+2. **Replay protection cannot use a transaction hash.** Decoded fields are
+   `{nonce, gasLimit, from, toIsNull, to, value, data}` — no hash. A caller-supplied hash would be
+   forgeable, so replay keys on `(chainKey, height, txIndex)` with the index from the precompile's
+   own `calculateTxIndex`. One source transaction claims exactly once.
+3. **Payment means the event log, not the transfer.** A USDC payment is an ERC-20 call: the
+   transaction's `to` is the token contract and its `value` is zero. The real payee and amount live
+   in the `Transfer` log, so `VouchCore` scans proven receipt logs for a `Transfer` from the payer
+   to a registered, active merchant — and binds the Sepolia payer to the Creditcoin caller.
+4. **Readiness is decided by attempting proof retrieval, not by attested height.** The prover serves
+   from its own cache and lags on-chain finalization (with a default 15s `extraDelayMs`), so a height
+   can read as attested before its proof is servable. The routes always try the prover; heights only
+   feed progress bars and ETAs.
+
+## Attestation lifecycle
+
+Measured 2026-09-08: the latest attested Sepolia height trailed chain head by **43 blocks (~9
+minutes)**. A payment is not provable until its block is attested *and* ingested into the prover
+cache. Treat every claim as asynchronous: pending-payment tracking, per-row progress, and the
+batch endpoint's per-payment breakdown all exist because of this lag, not in spite of it.
+
+`contracts/test/fixtures/sepolia-transfer.json` is a real proof for a real Sepolia ETH transfer
+(block 11658200, txIndex 4, 2.5 ETH). Its `verify()` returns `true` on the live precompile, and the
+test suite decodes it with the real `EvmV1Decoder`.
+
+## Three quirks found live (not in the docs)
+
+1. **The docs swap the chain keys.** The SDK's own code comments show chainKey 1 as Ethereum
+   mainnet, but `get_supported_chains()` on CC3 testnet returns `[(3, 1, "Ethereum"),
+   (1, 11155111, "Sepolia ethereum")]` — key 1 is **Sepolia**. Vouch resolves the key at runtime
+   rather than trusting documentation.
+2. **The Blockscout eth-rpc mirror mishandles filtered log topics.** A `getLogs` query for topics
+   `[sig, null, userTopic, null]` (filtering by the *second* indexed param) incorrectly returns `[]`
+   while the unfiltered `[sig]` query returns everything. Proven live: unfiltered → 3 receipts,
+   `receiptId`-filtered → 1, `user`-filtered → 0. `lib/provenance.ts` therefore fetches unfiltered
+   `PurchaseVerified` logs and filters client-side; the leaderboard does the same.
+3. **The primary CC3 RPC cannot serve wide log ranges.** `eth_getLogs` from block 0 times out after
+   10s on `rpc.cc3-testnet.creditcoin.network`, while the Blockscout mirror
+   (`creditcoin-testnet.blockscout.com/api/eth-rpc`) answers the full range in under a second.
+   Provenance lookups go to the mirror; everything else stays on the node.
 
 ## Constants
 
@@ -13,33 +127,13 @@ Re-check with the commands below if anything stops working.
 | Chain info precompile | `0x0000000000000000000000000000000000000FD3` |
 | Prover service | `https://prover.cc3-testnet.creditcoin.network` |
 | Proof endpoint | `GET /api/v1/proof-by-tx/{chainKey}/{txHash}` |
+| Batch proof endpoint | `POST /api/v1/proof-batch-by-tx/{chainKey}` |
+| Attested-height endpoint | `GET /api/v1/attested-height/{chainKey}` |
 | **Sepolia chainKey** | **`1`** (payments / `VouchCore`) |
 | **Ethereum mainnet chainKey** | **`3`** (Uniswap V2 `Sync` / `PriceOracle`) |
 | Uniswap V2 price pair | WCTC (old) / USDT `0x4a4F4fcA1a9B673f9eB23b7EeFe9dFbafd8D8140` |
 | Solidity source | `@gluwa/usc-contracts@0.2.0`, vendored into `contracts/src/vendor/` |
 | TS SDK | `@gluwa/usc-sdk@0.18.0` (ethers v6 peer dep) |
-
-`get_supported_chains()` on `0x0FD3` returns `[(3, 1, "Ethereum"), (1, 11155111, "Sepolia ethereum")]`
-— note chainKey 1 is **Sepolia**, while the SDK's own doc comments show chainKey 1 as Ethereum
-mainnet. Resolve it at runtime rather than trusting the docs.
-
-Both precompiles return empty `eth_getCode`. That is normal for natives and does not mean they are
-absent; `NativeQueryVerifierLib.hasPrecompile()` special-cases it via chainId.
-
-## Two behaviours that drive the contract design
-
-1. **The prover proves inclusion, not success.** A reverted Sepolia transaction still verifies.
-   `VouchCore` independently requires `decodeReceiptFields(encodedTx).receiptStatus == 1`.
-2. **Decoded fields carry no transaction hash.** `CommonTxFields` is
-   `{nonce, gasLimit, from, toIsNull, to, value, data}`. Replay protection therefore keys on
-   `(chainKey, height, txIndex)` with `txIndex` from the precompile's own `calculateTxIndex`,
-   never on a caller-supplied hash (which would be forgeable).
-
-## Attestation lag
-
-Measured 2026-09-08: latest attested Sepolia height trailed the chain head by **43 blocks (~9
-minutes)**. A payment is not provable until its block is attested. Treat the claim flow as
-asynchronous and show real progress in the UI.
 
 ## Reproducing the checks
 
@@ -63,19 +157,21 @@ cast call 0x0000000000000000000000000000000000000FD3 \
 # fetch a real proof (Sepolia payment or Ethereum Sync)
 curl "https://prover.cc3-testnet.creditcoin.network/api/v1/proof-by-tx/1/<txHash>"
 curl "https://prover.cc3-testnet.creditcoin.network/api/v1/proof-by-tx/3/<txHash>"
-```
 
-`contracts/test/fixtures/sepolia-transfer.json` is a real proof for a real Sepolia ETH transfer
-(block 11658200, txIndex 4, 2.5 ETH). Its `verify()` returns `true` on the live precompile, and the
-test suite decodes it with the real `EvmV1Decoder`.
+# batch proof for several Sepolia payments at once (POST JSON array of hashes)
+curl -X POST "https://prover.cc3-testnet.creditcoin.network/api/v1/proof-batch-by-tx/1" \
+  -H "content-type: application/json" -d '["<txHash1>","<txHash2>"]'
+
+# what the prover cache has ingested (what waitUntilHeightAttested polls)
+curl "https://proof-gen-api.cc3-testnet.creditcoin.network/api/v1/attested-height/1"
+```
 
 ## Price observations (Ethereum mainnet Sync)
 
-`VouchCore` still verifies Sepolia MockUSDC transfers on chain key `1`. `PriceOracle` is a
-separate Attestcoin consumer: it is constructed with chain key `3` and reads a Uniswap V2
-`Sync(uint112,uint112)` from Ethereum mainnet. There is no CTC/USDC V2 pair on mainnet or
-Sepolia; the configured pair is WCTC (old) / USDT, where WCTC is token0 (18 decimals) and USDT
-is token1 (6 decimals). Uniswap V3 pools cannot be used because they do not emit `Sync`.
+`VouchCore` verifies Sepolia MockUSDC transfers on chain key `1`. `PriceOracle` is a separate
+Attestcoin consumer: constructed with chain key `3`, it reads a Uniswap V2
+`Sync(uint112,uint112)` from Ethereum mainnet, where WCTC is token0 (18 decimals) and USDT is
+token1 (6 decimals). Uniswap V3 pools cannot be used because they do not emit `Sync`.
 
 App cashback (`AppCashback`) quotes a percentage of verified spend using `PriceOracle.readRate()`.
 Merchant quest and campaign cashback does not use the oracle.
