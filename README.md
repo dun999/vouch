@@ -80,6 +80,10 @@ The proof route is stateless and reports `pending`, `ready`, or `error`. It atte
 
 **Additional integration: price observations.** Payments stay on Sepolia (chain key `1`). App cashback is priced from Ethereum mainnet (chain key `3`). [`PriceOracle.pushSyncProof`](contracts/src/PriceOracle.sol) uses the same verifier and decoder to read a Uniswap V2 `Sync(uint112,uint112)` event from the configured pair. It checks receipt success, the emitting pair, increasing source heights, nonzero reserves, and configured rate bounds. App cashback requires that proven rate to be fresh.
 
+Merchant quest rewards, community campaigns, and app cashback have separate accounting. Rewards are credited before users withdraw CTC. App cashback is `rate(level) × verified spend × CTC-per-USD`: the level rate above times the purchase amount, converted at the oracle's proven CTC price (live rate ≈ 12.998 CTC per $1, so a $5 purchase at level 3 earns 4% × $5 × 12.998 ≈ 2.6 CTC). It requires a fresh oracle rate and available treasury funds; insufficient funds can produce a partial credit or none, and a stale price means no app cashback at all — the receipt and stars are never blocked by pricing.
+
+Attestcoin's role in that number is the price itself. The CTC-per-USD rate is not fetched from an API or trusted from an operator: `PriceOracle` proves a Uniswap V2 `Sync` event from Ethereum mainnet through the same `0x0FD2` verifier that proves payments, checking receipt success, the exact pair, increasing heights, nonzero reserves, and rate bounds on-chain. No valid Sync proof, no rate update — and without a fresh rate, no app cashback. Merchant quest and campaign cashback never touch this path; they pay fixed CTC from merchant funds.
+
 There is no CTC/USDC Uniswap V2 pool on mainnet or Sepolia. The configured pair is Uniswap V2 **WCTC (old) / USDT**, which emits `Sync` and quotes a USD stablecoin at 6 decimals. Uniswap V3 WCTC/USDT cannot be used: it does not emit `Sync`.
 
 A live mainnet Sync was proven onto Creditcoin CC3 testnet:
@@ -92,7 +96,7 @@ A live mainnet Sync was proven onto Creditcoin CC3 testnet:
 | `pushSyncProof` (Creditcoin) | `0x87f64fafc226a4e25d63e63577efd42a85a40a72a3986fd2f12d80c7cf751705`, status 1 |
 | Result | `ctcPerUsd` ≈ 12.998 CTC per $1, `isManual = false` |
 
-Merchant quest and campaign cashback is unchanged: it is funded in CTC and does not use the oracle. Refresh the rate with `pnpm sync:price` after deploying a new oracle.
+Refresh the rate with `pnpm sync:price` after deploying a new oracle.
 
 See [`ATTESTCOIN.md`](ATTESTCOIN.md) for protocol constants, the live price-proof notes, and earlier ETH-payment experiments. The older XP formula and first deployment table in that file describe a prior iteration, not the current MockUSDC flow.
 
@@ -110,9 +114,7 @@ Default purchase rewards are **10 stars per whole demo dollar**, calculated prop
 
 Quest eligibility and app cashback use the level held **before** the purchase. A purchase that unlocks level 2 receives its app-cashback rate only on subsequent purchases.
 
-Merchant quest rewards, community campaigns, and app cashback have separate accounting. Rewards are credited before users withdraw CTC. App cashback is `rate(level) × verified spend × CTC-per-USD`: the level rate above times the purchase amount, converted at the oracle's proven CTC price (live rate ≈ 12.998 CTC per $1, so a $5 purchase at level 3 earns 4% × $5 × 12.998 ≈ 2.6 CTC). It requires a fresh oracle rate and available treasury funds; insufficient funds can produce a partial credit or none, and a stale price means no app cashback at all — the receipt and stars are never blocked by pricing.
-
-Attestcoin's role in that number is the price itself. The CTC-per-USD rate is not fetched from an API or trusted from an operator: `PriceOracle` proves a Uniswap V2 `Sync` event from Ethereum mainnet through the same `0x0FD2` verifier that proves payments, checking receipt success, the exact pair, increasing heights, nonzero reserves, and rate bounds on-chain. No valid Sync proof, no rate update — and without a fresh rate, no app cashback. Merchant quest and campaign cashback never touch this path; they pay fixed CTC from merchant funds.
+Merchant quest rewards, community campaigns, and app cashback have separate accounting. Rewards are credited before users withdraw CTC. App cashback requires a fresh oracle rate and available treasury funds; insufficient funds can produce a partial credit or none.
 
 ## Architecture and stack
 
