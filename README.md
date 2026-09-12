@@ -100,6 +100,12 @@ Refresh the rate with `pnpm sync:price` after deploying a new oracle.
 
 See [`ATTESTCOIN.md`](ATTESTCOIN.md) for protocol constants, the live price-proof notes, and earlier ETH-payment experiments. The older XP formula and first deployment table in that file describe a prior iteration, not the current MockUSDC flow.
 
+### What if we removed Attestcoin?
+
+Every alternative reintroduces the trust the protocol removes. A trusted server signing "this payment happened" makes the operator a single point of failure that can mint stars for anyone. A bridge moves custody risk onto user funds just to carry information. Optimistic or committee-based oracles add challenge windows, watchers, and honesty assumptions — heavy machinery for a yes/no question about a transaction.
+
+Without the precompiles, `VouchCore` cannot check anything itself: no inclusion proof, no receipt-status check, no forge-proof replay key. Levels would measure whoever the server favors, and the CTC price would be whoever the operator quotes. Quests, levels, and cashback are just accounting — Attestcoin is the only part that makes the accounting *about something real*. Remove it and Vouch degrades into a conventional database-backed loyalty app wearing on-chain cosmetics.
+
 ## Progression and cashback
 
 Default purchase rewards are **10 stars per whole demo dollar**, calculated proportionally in the token's six-decimal units with integer rounding. Daily check-ins add stars too, so a level is not exclusively a measure of spending. Merchants configure cashback incentives; protocol-owner settings control purchase-star and level parameters.
