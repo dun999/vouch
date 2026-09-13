@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { VouchCoreAbi } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
-import { creditcoinTestnet } from "@/lib/chains";
+import { ccTxUrl, creditcoinTestnet } from "@/lib/chains";
 import { countdown, usd, shortAddr } from "@/lib/format";
 import { removePending, type Pending } from "@/lib/pending";
 import { useEnsureChain } from "@/lib/useChain";
@@ -27,6 +27,7 @@ export function PendingRow({ p, onDone }: { p: Pending; onDone: () => void }) {
   const [state, setState] = useState<ProofState>({ status: "idle" });
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState("");
+  const [failedTx, setFailedTx] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const poll = useCallback(async () => {
@@ -75,6 +76,7 @@ export function PendingRow({ p, onDone }: { p: Pending; onDone: () => void }) {
     if (state.status !== "ready" || !address) return;
     setClaiming(true);
     setClaimError("");
+    setFailedTx("");
     try {
       const pf = state.proof;
       const hash = await ensure(creditcoinTestnet.id, () => writeContractAsync({
@@ -102,7 +104,19 @@ export function PendingRow({ p, onDone }: { p: Pending; onDone: () => void }) {
         // Estimates run low on this chain and an under-estimate burns the whole limit.
         gas: 3_000_000n,
       }));
-      await publicClient?.waitForTransactionReceipt({ hash });
+      // A reverted claim writes nothing on-chain, so the pending must stay until a
+      // mined receipt reports success. waitForTransactionReceipt resolves on revert
+      // (it only throws on timeout/replacement), hence this explicit status check.
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash });
+      if (!receipt) {
+        setClaimError("Could not confirm the claim transaction. Your payment is still pending — try again.");
+        return;
+      }
+      if (receipt.status !== "success") {
+        setFailedTx(hash);
+        setClaimError("Claim transaction reverted on Creditcoin — nothing was claimed and your payment is still pending. Check the transaction for the revert reason.");
+        return;
+      }
       if (address) removePending(address, p.txHash);
       onDone();
     } catch (e: any) {
@@ -157,22 +171,23 @@ export function PendingRow({ p, onDone }: { p: Pending; onDone: () => void }) {
 
       {claimError && (
         <div className="banner err small" style={{ marginTop: 9 }}>
-          {claimError}
+          {claimError}{" "}
+          {failedTx && (
+            <a
+              className="rc-link"
+              href={ccTxUrl(failedTx)}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              View transaction
+            </a>
+          )}
         </div>
       )}
 
       <div className="row" style={{ marginTop: 11 }}>
         <button className="sm" disabled={state.status !== "ready" || claiming} onClick={claim}>
           {claiming ? "Claiming…" : "Claim reward"}
-        </button>
-        <button
-          className="ghost sm"
-          onClick={() => {
-            if (address) removePending(address, p.txHash);
-            onDone();
-          }}
-        >
-          Dismiss
         </button>
       </div>
     </div>
